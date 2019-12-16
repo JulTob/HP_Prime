@@ -1,0 +1,15 @@
+EXPORT ROLLDIE(N)
+BEGIN
+RETURN 1+RANDINT(N-1);
+END;
+
+EXPORT ROLLMANY(n,sides)
+BEGIN LOCAL k,roll, results;
+// initialize list of frequencies 
+MAKELIST(0,X,1,2*sides,1) ▶ results;
+ FOR k FROM 1 TO n DO
+  ROLLDIE(sides)+ROLLDIE(sides) ▶ roll; 
+  results(roll)+1 ▶ results(roll); 
+ END;
+ RETURN results;
+END;
