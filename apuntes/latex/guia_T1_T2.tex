@@ -1,0 +1,269 @@
+\documentclass[a4paper,landscape]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish,es-nodecimaldot]{babel}
+\usepackage{lmodern,microtype}
+\usepackage{amsmath,amssymb,mathtools}
+\usepackage{xcolor,geometry,ragged2e}
+\usepackage{fancyhdr}
+\geometry{left=7mm,right=7mm,top=6mm,bottom=7mm}
+\renewcommand{\familydefault}{\sfdefault}
+\definecolor{ink}{HTML}{163442}
+\definecolor{accent}{HTML}{176E72}
+\definecolor{hp}{HTML}{8A3B12}
+\definecolor{muted}{HTML}{4E5B62}
+\definecolor{warn}{HTML}{B3261E}
+\definecolor{sitbg}{HTML}{E8F1F1}
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0pt}
+\fancyfoot[L]{\fontsize{6.4}{7}\selectfont\color{muted}
+  Optimización Continua UMH · Temas 1 y 2 · Situación $\to$ pasos. \textcolor{hp}{\textbf{HP}} = cálculo en la HP Prime (vista CAS).}
+\fancyfoot[R]{\fontsize{6.4}{7}\selectfont\color{muted}\thepage/2}
+\setlength{\footskip}{3.5mm}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.6pt}
+\setlength{\abovedisplayskip}{1pt}
+\setlength{\belowdisplayskip}{1pt}
+\setlength{\abovedisplayshortskip}{0.5pt}
+\setlength{\belowdisplayshortskip}{0.5pt}
+\setlength{\jot}{0.5pt}
+\setlength{\fboxsep}{1.6pt}
+\setlength{\emergencystretch}{1em}
+\setlength{\arraycolsep}{2pt}
+\newcommand{\R}{\mathbb R}
+\newcommand{\T}{^{\mathsf t}}
+% Tarjeta de situación: título, ejercicios, cómo reconocerla.
+\newcommand{\caso}[3]{%
+  \par\vspace{3.2pt}
+  \noindent\colorbox{sitbg}{\parbox{\dimexpr\linewidth-2\fboxsep}{%
+    {\fontsize{8.8}{9.6}\selectfont\bfseries\color{accent}#1}%
+    \hfill{\fontsize{7}{8}\selectfont\color{muted}#2}\par
+    {\color{ink}\textit{#3}}}}\par\vspace{0.8pt}}
+% Paso numerado con sangría francesa.
+\newcommand{\p}[1]{\par\hangindent=1.15em\hangafter=1\noindent\makebox[1.15em][l]{\textbf{\color{accent}#1}}}
+\newcommand{\hp}[1]{\ {\color{hp}\textbf{HP}\,\texttt{#1}}}
+\newcommand{\esc}[1]{\par\hangindent=1.15em\hangafter=1\noindent\textbf{Escribe:} #1}
+\newcommand{\ojo}[1]{\par{\color{warn}\textbf{Ojo:} #1}}
+\newcommand{\teo}[2]{\par\hangindent=0.8em\hangafter=1\noindent\textbf{\color{accent}#1.} #2}
+\newcommand{\seccion}[1]{%
+  \par\vspace{3.5pt}
+  {\fontsize{9.6}{10.4}\selectfont\bfseries\color{ink}#1}\par
+  \vspace{0.3pt}{\color{ink}\hrule height 0.4pt}\vspace{1pt}}
+\newcommand{\head}[2]{%
+  {\fontsize{14}{15}\selectfont\bfseries\color{ink}Guía de examen · Temas 1 y 2}
+  \hfill{\fontsize{10.5}{11}\selectfont\bfseries\color{accent}#1}\par
+  {\fontsize{7.6}{9}\selectfont\color{muted}#2}\par
+  \vspace{0.8mm}{\color{ink}\hrule height 0.6pt}\vspace{0.8mm}}
+\newsavebox{\ColA}
+\newsavebox{\ColB}
+\newsavebox{\ColC}
+\newcommand{\capture}[2]{%
+  \sbox{#1}{\begin{minipage}[t]{0.322\textwidth}
+    \fontsize{7.75}{8.75}\selectfont
+    \RaggedRight
+    #2
+  \end{minipage}}}
+\newcommand{\placecols}{%
+  \typeout{COLUMN A HEIGHT: \the\dimexpr\ht\ColA+\dp\ColA\relax}
+  \typeout{COLUMN B HEIGHT: \the\dimexpr\ht\ColB+\dp\ColB\relax}
+  \typeout{COLUMN C HEIGHT: \the\dimexpr\ht\ColC+\dp\ColC\relax}
+  \noindent\usebox{\ColA}\hfill\usebox{\ColB}\hfill\usebox{\ColC}}
+\begin{document}
+
+% =====================================================================
+\head{CARA A}{Busca la situación que se parece a tu ejercicio y escribe sus pasos en orden. Tema 1 completo y primeras situaciones del tema 2.}
+
+\capture{\ColA}{
+\seccion{TEMA 1 · Modelización y resolución gráfica}
+
+\caso{1 · Plantear el modelo}{Ej. 1, 3a, 4–8, 9a, 10, 11a, 12, 13, 14a}{Un enunciado con recursos, demandas o decisiones. «Plantea el problema/modelo que…».}
+\p{1.} \textbf{Variables de decisión}: qué se decide y en qué unidades (\(x_j\) = Tm de…, n.º de veces que…, \(y_j=1\) si se elige…).
+\p{2.} \textbf{Función objetivo}: máx beneficio \(=\sum(\text{precio}-\text{coste})x_j\) o mín coste/tiempo. Lo que se compra aparte resta.
+\p{3.} \textbf{Restricciones}, una por frase del enunciado: «dispone de / a lo sumo» \(\le\); «al menos / contrato / demanda» \(\ge\); «exactamente / se reparte todo» \(=\).
+\p{4.} \textbf{Naturaleza}: \(x\ge0\); \(x\in\mathbb Z_+\) si son unidades indivisibles; \(y\in\{0,1\}\) si es sí/no.
+\p{5.} Escribe el modelo completo: máx/mín … s.a. … , \(x\ge0\), \(x\in\R\) (o \(\mathbb Z\), \(\{0,1\}\)).
+\p{6.} \textbf{Clase} (si la piden): lineal continuo · lineal entero · binario · mixto · no lineal (alguna función no lineal).
+
+\caso{1b · Traducir cada frase a restricción}{patrones de las hojas}{Frases típicas de los enunciados del profesor.}
+\p{·} «se puede comprar más a \(c\) €/u» (Ej. 1): variable \(RE\); recurso \(\le\) disponible \(+RE\); objetivo \(-c\,RE\).
+\p{·} «el proceso \(R\) usa … y produce …» (Ej. 3, 8): variable = veces (o Tm) de cada proceso; cada producto/recurso \(=\sum(\text{cantidad por proceso})\,x\).
+\p{·} «cada Tm de mezcla debe contener al menos…» (Ej. 10): \(x_j\) = Tm de la fuente \(j\) por Tm de mezcla; \(\sum x_j=1\); \(\sum_j(\text{composición})x_j\ge\) mínimo.
+\p{·} «al menos una C-02 por cada tres C-01» (Ej. 9): \(3x_2\ge x_1\).
+\p{·} «turnos de 8 h, periodos de 4 h» (Ej. 7): \(x_t\) = los que \emph{empiezan} en \(t\); el periodo \(t\) lo cubren \(x_{t-1}+x_t\ge\) demanda\(_t\); personas \(=2\sum x_t\).
+\p{·} «configuraciones de aviones» (Ej. 4): \(x_k\) = veces que entra la configuración \(k\); su tiempo = el máximo de sus aviones; por tipo \(\sum_{k\ni\text{tipo}}x_k=\) n.º de aviones.
+\p{·} «elegir misiones/proyectos/discos» (Ej. 5, 12, 13): \(y_j\in\{0,1\}\); por recurso o periodo \(\sum a_{ij}y_j\le b_i\); cubrir cada archivo \(\sum_{j\text{ lo contiene}}y_j\ge1\).
+\p{·} «coste de puesta en marcha si se usa» (Ej. 6): \(y_i\in\{0,1\}\), \(x_i\le\text{Cap}_i\,y_i\), coste \(F_iy_i+c_ix_i\).
+\p{·} Lógicas: incompatibles \(y_i+y_j\le1\) · «si \(i\) entonces \(j\)» \(y_i\le y_j\) · «si no \(i\), no \(j\)» \(y_j\le y_i\) · «a lo sumo \(k\)» \(\sum y\le k\) · activar una restricción: \(\sum a_ix_i\le b+M(1-y)\).
+\p{·} \(|g(x)|\le k\iff-k\le g(x)\le k\) · máx\,mín\(\{f_i\}\iff\) máx \(z\), \(f_i(x)\ge z\) · mín\,máx \(\iff\) mín \(z\), \(f_i(x)\le z\).
+\p{·} Fórmulas físicas (Ej. 2): sustituye todo en función de las variables (\(P=\gamma V\), \(I=xy^3/12\)) \(\Rightarrow\) no lineal.
+}
+
+\capture{\ColB}{
+\caso{2 · Resolver gráficamente un PL de 2 variables}{Ej. 3b, 9b, 11b, 14b, 15, 16a}{Modelo con dos variables. «Obtén gráficamente la solución óptima».}
+\p{1.} Dibuja cada restricción como recta (cortes con los ejes).
+\p{2.} Semiplano de cada una: sustituye un punto (\((0,0)\) si no está en la recta). Sombrea la región común \(F\) (con \(x,y\ge0\)).
+\p{3.} \textbf{Vértices}: resuelve cada par de rectas que se cortan en el borde de \(F\).\hp{solve([x+2*y=5,x-2*y=3],[x,y])}
+\p{4.} Recta de nivel \(z=c_1x+c_2y=k\) (dos valores de \(k\)) y sentido de mejora: \(c=(c_1,c_2)\) en máx, \(-c\) en mín.
+\p{5.} Desplázala en ese sentido: el último punto de \(F\) que toca es \(x^*\). (Si \(F\) es acotada, vale evaluar \(z\) en todos los vértices.)
+\esc{\(x^*=(\dots)\), \(z^*=c_1x_1^*+c_2x_2^*\), con el dibujo y la recta de nivel.}
+\p{·} \textbf{Óptimos múltiples}: la recta de nivel coincide con una arista de \(F\) \(\Rightarrow\) todo el segmento entre esos dos vértices.
+\p{·} \textbf{No acotado}: \(F\) no acotada y la recta mejora sin fin. \textbf{Infactible}: \(F=\emptyset\).
+
+\caso{3 · PL entero gráfico}{Ej. 9b, ejemplo de los apuntes}{Las variables son enteras.}
+\p{1.} Dibuja \(F\) como en 2 y marca sus puntos enteros.
+\p{2.} Desplaza la recta de nivel hasta el último punto \textbf{entero} de \(F\).
+\p{3.} Compara \(z\) en los enteros factibles cercanos al óptimo continuo; redondear puede dar un punto infactible o no óptimo.
+
+\caso{4 · Sensibilidad de los coeficientes del objetivo}{Ej. 3c, 11c, 14c, 15, 16b}{«Realiza el análisis de sensibilidad»: ¿cuánto pueden cambiar \(c_1\), \(c_2\) sin que cambie \(x^*\)?}
+\p{1.} Restricciones \textbf{activas} en \(x^*\) (se cumplen con \(=\)) y sus pendientes \(m_1=-\frac{a_{11}}{a_{12}}\), \(m_2=-\frac{a_{21}}{a_{22}}\).
+\p{2.} Pendiente de la recta de nivel: \(m=-c_1/c_2\).
+\p{3.} \(x^*\) sigue óptimo \(\iff\) \(m\) está entre \(m_1\) y \(m_2\).
+\p{4.} \(c_1=a\) variable (\(c_2\) fijo): despeja \(a\). \(c_2=b\) variable: separa \(b>0\) y \(b<0\) al multiplicar.
+\esc{\(c_1\in[\dots]\), \(c_2\in[\dots]\) (cambiando uno solo cada vez).}
+\p{·} Apuntes: \(z=3x+2y\), activas \(x+2y=5\) (\(-\frac12\)) y \(x-2y=3\) (\(\frac12\)): \(-\frac a2\le-\frac12\Rightarrow a\in[1,\infty[\); \(b\ge0\): \(-\frac3b\le-\frac12\Rightarrow b\le6\); \(b\le0\): \(b\ge-6\).
+
+\caso{5 · Sensibilidad de los términos independientes}{mismos ejercicios}{¿Cuánto puede cambiar \(b_i\) manteniendo las mismas activas? Precio sombra.}
+\p{1.} \textbf{Restricción no activa} (hay holgura en \(x^*\)): precio sombra \(0\); si es \(\le\): \(b_i\in[a_i\T x^*,+\infty[\); si es \(\ge\): \(]-\infty,a_i\T x^*]\).
+\p{2.} \textbf{Activa}: resuelve las dos activas con \(b_i\) como parámetro \(\to x^*(b_i)\).\hp{solve([x+2*y=b,x-2*y=3],[x,y])}
+\p{3.} Sustituye \(x^*(b_i)\) en las demás restricciones (y \(x,y\ge0\)) y despeja \(b_i\): ese intervalo es el rango (hasta que la recta pasa por el siguiente vértice).
+\p{4.} Precio sombra \(y_i=\dfrac{dz^*}{db_i}\): deriva \(z(x^*(b_i))\); es constante en el rango.
+\esc{\(b_i\in[\dots]\); \(y_i=\dots\); \(z^*(b_i)=z^*+y_i(b_i-b_i^0)\).}
+}
+
+\capture{\ColC}{
+\caso{6 · Resolver gráficamente un problema no lineal}{Ej. 2b, 17, ejemplo de los apuntes}{Objetivo o restricciones con \(x^2\), \(xy\), raíces…}
+\p{1.} Dibuja \(F\): cada \(g\le k\) con su frontera \(g=k\) (círculo, parábola…) y el lado elegido con un punto de prueba.
+\p{2.} Curvas de nivel de \(f\): rectas si es lineal; círculos de centro \((a,b)\) si \(f=(x-a)^2+(y-b)^2\).
+\p{3.} El óptimo está donde la curva de nivel toca \(F\) por última vez: en un \textbf{vértice} (cruce de dos fronteras) o \textbf{tangente} a una frontera.
+\p{4.} Tangencia con \(g=0\): \(\nabla f=\lambda\nabla g\), \(g=0\) (o igualar pendientes: \((\sqrt{4-x^2})'=-3\)).\hp{solve([diff(f,x)=l*diff(g,x), diff(f,y)=l*diff(g,y), g=0], [x,y,l])}
+\p{5.} Vértices:\hp{solve([g1=0,g2=0],[x,y])}. Evalúa \(f\) en todos los candidatos factibles y elige.
+\p{·} Todo de una vez:\hp{CVOPT2(f,[g1,g2],[x,y])} (con \(g_k\le0\)).
+
+\seccion{TEMA 1 · Definiciones que se preguntan}
+\teo{Solución factible}{\(x^*\in F\).}
+\teo{Óptimo local}{\(\exists\varepsilon>0\) tal que \(f(x^*)\le f(x)\) \(\forall x\in F\) con \(\|x-x^*\|_2<\varepsilon\) (máx: \(\ge\)). Estricto si la desigualdad es estricta.}
+\teo{Óptimo global}{\(x^*\) factible y \(f(x^*)\le f(x)\) \(\forall x\in F\) (máx: \(\ge\)). Estricto si es estricta.}
+\teo{Equivalencia}{mín \(f\) = máx \((-f)\) y viceversa.}
+\teo{Elementos}{variables \(x\in X\), objetivo \(f(x)\in\R^d\), conjunto factible \(F\). Forma general: mín \(f(x)\) s.a. \(g_j(x)\le0\), \(h_k(x)=0\), \(x\in\R^n\).}
+\teo{Etapas}{definición del problema, construcción del modelo, solución, validación, implantación.}
+
+\seccion{TEMA 2 · Conjuntos convexos (figuras)}
+\caso{7 · ¿Es convexo el conjunto?}{Ej. 1.1, 4.1, ejemplo 1}{Te dan una figura o unas desigualdades.}
+\p{1.} Si \(F\) es intersección de semiespacios o de conjuntos \(\{g\le k\}\) con \(g\) convexa: convexo (la intersección de convexos es convexa).
+\p{2.} Si es una figura: busca dos puntos de \(F\) cuyo segmento salga de \(F\) \(\Rightarrow\) no convexo (da los puntos y un \(\lambda\)).
+\esc{«Para todo \(x_1,x_2\in F\) y \(\lambda\in[0,1]\), \(\lambda x_1+(1-\lambda)x_2\in F\)» o el contraejemplo.}
+
+\caso{8 · Puntos y direcciones extremas de una figura}{Ej. 1.2–1.3, 4.1, 6.3, 8.2, ejemplo 2}{«Determina los puntos extremos / direcciones extremas».}
+\p{1.} \textbf{Puntos extremos}: los vértices; en una frontera curva convexa, todos los puntos del arco. Los puntos interiores de un segmento no lo son.
+\p{2.} Coordenadas: corta las rectas/curvas de cada vértice.\hp{solve([x+y=2,x\^{}2-y=0],[x,y])}
+\p{3.} \textbf{Direcciones extremas}: solo si \(F\) no es acotado; son las de los rayos: \(d=Q-P\) (\(P\) inicio, \(Q\) otro punto del rayo), simplificada.
+\p{4.} \(F\) acotado \(\Rightarrow\) no tiene direcciones.
+\ojo{comprueba que los rayos no se cortan (si se cortan, \(F\) es acotado).}
+
+\caso{9 · Semiespacios que definen el conjunto}{Ej. 1.4, 6.1, 8.1}{Figura poligonal (con o sin rayos).}
+\p{1.} Por cada lado o rayo, dos puntos \(P,Q\) de su recta.
+\p{2.} Recta: \((Q_y-P_y)(x-P_x)-(Q_x-P_x)(y-P_y)=0\to a_1x+a_2y=b\).
+\p{3.} Sentido con un punto interior \(I\): si \(a\T I\le b\) el semiespacio es \(a\T x\le b\); si no, \(\ge\).
+\esc{\(F=\{x:\ a_1\T x\le b_1,\dots\}\) (y \(x\ge0\) si procede).}
+}
+\placecols
+
+\newpage
+% =====================================================================
+\head{CARA B}{Tema 2: envolturas, proyección e hiperplanos, poliedros, funciones convexas, optimización convexa y enunciados de los teoremas.}
+
+\capture{\ColA}{
+\caso{10 · ¿Pertenece \(x\) a conv(A)?}{Ej. 3.1a, 3.2, 3.4}{Te dan un conjunto finito \(A\) y un punto.}
+\p{1.} Plantea \(x=\sum\lambda_ia_i\), \(\sum\lambda_i=1\), \(\lambda_i\ge0\).
+\p{2.} Si te dan los \(\lambda_i\): comprueba \(\lambda_i\ge0\) y \(\sum\lambda_i=1\) \(\Rightarrow\) sí.
+\p{3.} Si no: por Carathéodory basta probar grupos de \(n+1\) puntos; resuelve \(\sum\lambda_i(a_i;1)=(x;1)\) (una ecuación por coordenada más \(\sum\lambda_i=1\)) y busca un grupo con \(\lambda\ge0\).\hp{linsolve([...],[l1,l2,l3])}
+\p{4.} Para decir que no: una desigualdad que cumplen todos los \(a_i\) y \(x\) no (p.\,ej. todos tienen \(y\le2\) y \(x\) tiene \(y=4\)).
+\caso{11 · Carathéodory: con a lo sumo \(n+1\) puntos}{Ej. 3.1b, 3.3b}{\(x=\sum_{i=1}^k\lambda_ia_i\) con \(k>n+1\). Sigue el procedimiento de la demostración.}
+\p{1.} Vectores \(a_2-a_1,\dots,a_k-a_1\): son \(k-1>n\), luego linealmente dependientes.
+\p{2.} \(\mu_2,\dots,\mu_k\) no todos nulos con \(\sum_{i\ge2}\mu_i(a_i-a_1)=0\) (columnas \(a_i-a_1\)).\hp{ker([[2,2,4,3],[-1,-3,-3,0]])}
+\p{3.} \(\mu_1=-(\mu_2+\dots+\mu_k)\Rightarrow\sum\mu_ia_i=0\). Si ningún \(\mu_i>0\), cambia el signo de \(\mu\).
+\p{4.} \(\alpha=\min\{\lambda_i/\mu_i:\ \mu_i>0\}\).
+\p{5.} \(\lambda_i'=\lambda_i-\alpha\mu_i\): siguen \(\ge0\), suman 1 y uno es 0; quita ese punto.
+\p{6.} Si quedan más de \(n+1\), repite. Escribe \(x=\sum\lambda_i'a_i\).
+\caso{12 · Proyección y hiperplano separador}{Ej. 4.2–4.6}{«Calcula la proyección de \(x_0\) sobre \(F\) y un hiperplano separador usando la proyección».}
+\p{1.} ¿\(x_0\in F\)? Sustituye en todas las restricciones. Si sí: proy \(=x_0\) y no hay separador.
+\p{2.} Candidatos en la frontera de \(F\):
+\p{} – recta \(a\T x=b\): \(c=x_0-\frac{a\T x_0-b}{\|a\|^2}a\);
+\p{} – circunferencia (centro \(m\), radio \(r\)): \(c=m+r\frac{x_0-m}{\|x_0-m\|}\);
+\p{} – otra curva \(g=0\): \(x_0-c=\lambda\nabla g(c)\), \(g(c)=0\);\hp{solve([x0-x=l*diff(g,x), y0-y=l*diff(g,y), g=0], [x,y,l])}
+\p{} – las esquinas de \(F\).
+\p{3.} \(c^*\) = el candidato \textbf{factible} más cercano a \(x_0\). Criterio: \((x_0-c^*)\T(c-c^*)\le0\ \forall c\in F\).
+\p{4.} \(n=x_0-c^*\), \(b=n\T c^*\); \(H:\ n\T x=b\).
+\p{5.} Comprueba \(n\T x_0>b\) y \(n\T c\le b\) en \(F\) (prueba un punto de \(F\)).
+\p{·} Todo de una vez:\hp{CVPROY([x0,y0],[g1,g2,g3],[x,y])}
+\caso{13 · Hiperplano soporte en un punto}{Ej. 4.7–4.10}{«Determina un hiperplano soporte para el punto \(c_0\)».}
+\p{1.} Comprueba que \(c_0\in F\) y que está en la frontera (alguna \(g_k(c_0)=0\)). Si es interior, no hay soporte.
+\p{2.} Escribe \(F=\{g_k\le0\}\) y calcula \(n=\nabla g_k(c_0)\) de la activa.\hp{subst([diff(g,x),diff(g,y)],[x,y],[1,1])}
+\p{3.} \(H:\ n\T x=n\T c_0\), con \(F\subset\{n\T x\le n\T c_0\}\).
+\p{4.} En una esquina (dos activas) vale cualquier \(\alpha\nabla g_1+\beta\nabla g_2\), \(\alpha,\beta\ge0\): da una.
+\p{·} Todo de una vez:\hp{CVSOP([x0,y0],[g1,g2,g3],[x,y])}
+}
+
+\capture{\ColB}{
+\caso{14 · Pasar a forma estándar \(\{Ax=b,\ x\ge0\}\)}{Ej. 5, 6.2, ejemplo 8}{Sistema con \(\le\), \(\ge\), \(=\) y variables de cualquier signo.}
+\p{1.} Variables: \(x_j\ge0\) se queda; \(x_j\le0\to x_j=-x_j'\); \(x_j\) libre \(\to x_j=x_j^+-x_j^-\). Sustituye en todas las restricciones.
+\p{2.} Cada \(\le\): suma una holgura \(+s_i^+\). Cada \(\ge\): resta un exceso \(-s_i^-\). Las \(=\) se quedan.
+\p{3.} No cambies el signo de \(b\) (como el profesor).
+\esc{el sistema, «todas las variables \(\ge0\)», y \(A\) (columnas en orden) y \(b\).}
+\caso{15 · Puntos extremos con matrices \(B\)}{Ej. 6.3–6.4, ejemplo 9}{«Para cada punto extremo determina una matriz \(B\)» o «obtén los puntos extremos».}
+\p{1.} Forma estándar: \(A\) (\(m\times n\)), \(b\).
+\p{2.} Elige \(m\) columnas de \(A\) \(\to B\) (hay \(\binom nm\) elecciones).
+\p{3.} \(\det B=0\Rightarrow\) no es base. Si no: \(x_B=B^{-1}b\), \(x_D=0\).\hp{det(B)}\hp{B\^{}-1*b}
+\p{4.} \(x_B\ge0\Rightarrow\) solución básica factible \(\Rightarrow\) punto extremo (quita holguras para dar \((x_1,x_2)\)). Algún \(x_B<0\Rightarrow\) no factible.
+\p{5.} Varias \(B\) para el mismo punto \(\Rightarrow\) degenerado.
+\esc{cada \(B\) (con sus columnas), \(B^{-1}b\), factible o no, y el punto extremo.}
+\caso{16 · Direcciones extremas con \(B\) y una columna de \(D\)}{Ej. 6.5, ejemplo 9}{«Para cada dirección extrema determina \(B\) y una columna de \(D\)».}
+\p{1.} Para cada \(B\) factible calcula \(B^{-1}D\) (una columna por variable no básica).\hp{B\^{}-1*D}
+\p{2.} Si una columna \(B^{-1}a_j\) tiene todo \(\le0\): \(d=(-B^{-1}a_j\) en las básicas, \(1\) en \(x_j\), \(0\) el resto).
+\p{3.} Sus componentes \((x_1,x_2)\) dan la dirección extrema; quita las proporcionales.
+\caso{17 · Escribir un punto con extremos y direcciones}{Ej. 6.6}{«Escribe el punto como combinación de los puntos extremos y direcciones extremas».}
+\p{1.} Lista los puntos extremos \(x_i\) y las direcciones extremas \(d_j\).
+\p{2.} Plantea \(x=\sum\lambda_ix_i+\sum\mu_jd_j\), \(\sum\lambda_i=1\), \(\lambda,\mu\ge0\).
+\p{3.} Prueba con pocos términos (dos extremos y una dirección: 3 ecuaciones, 3 incógnitas) y comprueba los signos.\hp{linsolve([...],[l1,l2,m1])}
+\caso{19 · Máximo o mínimo de \(f\) en un poliedro}{Ej. 8.3, 8.4}{Poliedro acotado (figura) y una función no lineal.}
+\p{1.} Puntos extremos del poliedro (situación 8).
+\p{2.} ¿\(f\) convexa o cóncava? (situación 18).
+\p{3.} Máx de convexa o mín de cóncava en poliedro acotado \(\Rightarrow\) hay óptimo en un punto extremo.
+\p{4.} Evalúa \(f\) en todos los puntos extremos y elige.\hp{CVOPT2(f,[g1,...],[x,y])}
+\caso{20 · Verdadero o falso}{Ej. 2, 9}{Enunciado teórico sobre conjuntos, envolturas u óptimos.}
+\p{1.} Localiza la definición o el teorema que habla de eso.
+\p{2.} Si se cumplen todas sus hipótesis \(\Rightarrow\) V citándolo. Si falta una (convexo, estricta, acotado) \(\Rightarrow\) F con un contraejemplo.
+\p{·} Contraejemplos: semiplano (sin puntos extremos) · disco (infinitos) · \(\{x\ge0\}\subset\R^2\) (2 direcciones extremas) · \(f\) constante (máximo no único) · \((x-3)^2\) en \([0,1]\cup[2,3]\) (mínimo local no global).
+}
+
+\capture{\ColC}{
+\caso{18 · ¿Función convexa o cóncava?}{Ej. 7, ejemplos 10–12}{Te dan \(f(x)\) y piden convexidad en su dominio.}
+\p{1.} \textbf{Dominio} (\(\ln\): argumento \(>0\); \(1/g\): \(g\ne0\); \(\sqrt{\ }\): \(\ge0\)). ¿Es convexo?
+\p{2.} Hessiana \(Hf(x)\).\hp{hessian(f,[x,y,z])}
+\p{3.} Menores principales líderes \(\Delta_1,\Delta_2,\dots\) (el profesor: \(\Delta_0,\Delta_1,\dots\)).\hp{CVHESS(f,[x,y,z])} (los da todos)
+\p{4.} Criterio de Sylvester: todos \(>0\Rightarrow\) definida positiva \(\Rightarrow\) estrictamente convexa · \(-,+,-,\dots\Rightarrow\) definida negativa \(\Rightarrow\) estrictamente cóncava · si algún \(\Delta=0\): todos los menores principales \(\ge0\Rightarrow\) semidefinida positiva (convexa); con signo \((-1)^k\) o 0 \(\Rightarrow\) semidefinida negativa (cóncava) · otro patrón \(\Rightarrow\) indefinida: ni convexa ni cóncava.
+\p{5.} Si los \(\Delta\) dependen de \(x\): estudia su signo en todo el dominio. Dominio no convexo: dilo (vale en cada trozo convexo).
+\p{·} Atajos: suma con pesos \(>0\); máx de convexas; \(g\circ h\) con \(h\) afín; \(g\circ h\) con \(h\) convexa y \(g\) convexa no decreciente; \(1/g\) con \(g\) cóncava \(>0\).
+
+\seccion{TEMA 2 · Enunciados (sin demostración)}
+\teo{Convexos}{la intersección de convexos es convexa o vacía; \(\alpha C\) y \(C+D\) son convexos; \((\alpha+\beta)C=\alpha C+\beta C\) (\(\alpha,\beta\ge0\)).}
+\teo{Envoltura}{\(A\subset\)conv(A); \(A\subset B\Rightarrow\)conv(A)\(\subset\)conv(B); conv(A) es el menor convexo que contiene a \(A\); \(A\) convexo \(\iff A=\)conv(A); conv(A)+conv(B)=conv(A+B).}
+\teo{Carathéodory}{\(A\subset\R^n\), \(x\in\)conv(A) \(\Rightarrow x\) es combinación convexa de a lo sumo \(n+1\) puntos de \(A\).}
+\teo{Proyección}{\(C\ne\emptyset\) cerrado y convexo \(\Rightarrow\) para cada \(x_0\) existe un único \(c^*\in C\) con \(\|x_0-c^*\|\le\|x_0-c\|\ \forall c\in C\). Además: \(x_0\notin C\Rightarrow\) proy\(\in\partial C\); \(x_0\in C\Rightarrow\) proy\(=x_0\); proy\(=c^*\iff(x_0-c^*)\T(c-c^*)\le0\ \forall c\); proy es continua.}
+\teo{Hiperplano separador}{\(C\ne\emptyset\) cerrado y convexo, \(x_0\notin C\Rightarrow\exists n\ne0,b\): \(n\T c\le b\ \forall c\in C\) y \(n\T x_0>b\). Corolario: \(C\cap D=\emptyset\) convexos \(\Rightarrow\exists n\ne0\): \(\inf_Cn\T c\ge\sup_Dn\T d\).}
+\teo{Hiperplano soporte}{\(C\ne\emptyset\) convexo, \(c_0\in\partial C\Rightarrow\) existe un hiperplano soporte de \(C\) en \(c_0\).}
+\teo{Farkas}{uno y solo uno tiene solución: \(Ax\le0,\ b\T x>0\); o \(A\T y=b,\ y\ge0\).}
+\teo{Gordan}{uno y solo uno: \(Ax<0\); o \(A\T y=0,\ y\ge0,\ y\ne0\).}
+\teo{Puntos extremos}{\(P=\{Ax=b,x\ge0\}\), rango \(A=m\le n\): \(x_0\) punto extremo \(\iff\) solución básica factible; hay un número finito; \(P\ne\emptyset\Rightarrow\) existe alguno.}
+\teo{Direcciones extremas}{\(d\) dirección extrema \(\iff A=[B|D]\) con \(B^{-1}a_j\le0\) para una columna \(a_j\) de \(D\) y \(d\) múltiplo positivo de \((-B^{-1}a_j;e_j)\); hay un número finito.}
+\teo{Representación}{\(x\in P\iff x=\sum\lambda_ix_i+\sum\mu_jd_j\), \(\lambda_i\ge0\), \(\sum\lambda_i=1\), \(\mu_j\ge0\). \(P\) acotado \(\Rightarrow\) solo extremos; \(P\) no acotado \(\iff\) tiene una dirección extrema.}
+\teo{Funciones convexas}{\(\sum\alpha_if_i\) (\(\alpha_i>0\)) y máx\(\{f_i\}\) convexas; \(1/g\) convexa si \(g\) cóncava \(>0\); \(g(Ax+b)\) conserva convexidad; \(g\circ h\) convexa si \(h\) convexa y \(g\) convexa no decreciente; convexa \(\Rightarrow\) continua en el interior.}
+\teo{Caracterizaciones}{\(f\) convexa \(\iff\) epi(\(f\)) convexo; (\(C\) abierto) \(\iff f(x)\ge f(x_0)+\nabla f(x_0)\T(x-x_0)\); \(\iff Hf\) semidefinida positiva en \(C\). Cóncava: hip(\(f\)), \(\le\), semidefinida negativa.}
+\teo{Optimalidad global}{mín de convexa (máx de cóncava) en \(F\) convexo: local \(\Rightarrow\) global; estrictamente convexa, o local estricto \(\Rightarrow\) único global.}
+\teo{Condición de optimalidad}{mín, \(f\) convexa diferenciable, \(F\) convexo: \(x^*\) global \(\iff\nabla f(x^*)\T(x-x^*)\ge0\ \forall x\in F\) (máx cóncava: \(\le0\)).}
+\teo{Poliedros}{máx de convexa o mín de cóncava en un poliedro acotado: existe una solución óptima en un punto extremo.}
+}
+\placecols
+\end{document}

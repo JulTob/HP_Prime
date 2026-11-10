@@ -1,0 +1,440 @@
+\documentclass[a4paper,landscape]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish,es-nodecimaldot]{babel}
+\usepackage{lmodern,microtype}
+\usepackage{amsmath,amssymb,mathtools}
+\usepackage{xcolor,geometry,ragged2e}
+\usepackage{fancyhdr}
+\geometry{left=8mm,right=8mm,top=7mm,bottom=8mm}
+\renewcommand{\familydefault}{\sfdefault}
+\definecolor{ink}{HTML}{163442}
+\definecolor{accent}{HTML}{176E72}
+\definecolor{muted}{HTML}{4E5B62}
+\definecolor{rulegray}{HTML}{CED8DB}
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0pt}
+\fancyfoot[L]{\fontsize{6.8}{8}\selectfont\color{muted}
+  Optimización Continua UMH · Unidades 2, 3 y 4 · Guía de procedimientos}
+\fancyfoot[R]{\fontsize{6.8}{8}\selectfont\color{muted}\thepage/2}
+\setlength{\footskip}{4mm}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{1.2pt}
+\setlength{\abovedisplayskip}{1.5pt}
+\setlength{\belowdisplayskip}{1.5pt}
+\setlength{\abovedisplayshortskip}{1pt}
+\setlength{\belowdisplayshortskip}{1pt}
+\setlength{\jot}{1pt}
+\setlength{\emergencystretch}{1em}
+\newcommand{\R}{\mathbb R}
+\newcommand{\T}{^{\mathsf T}}
+\newcommand{\invT}{^{-\mathsf T}}
+\newcommand{\g}{\nabla f}
+\newcommand{\Hf}{\nabla^2 f}
+\newcommand{\norm}[1]{\left\lVert #1\right\rVert}
+\newcommand{\block}[2]{%
+  \par\vspace{3.5pt}
+  {\fontsize{9.6}{10.5}\selectfont\bfseries\color{accent}#1\quad #2}\par
+  \vspace{1pt}}
+\newcommand{\lead}[1]{\textbf{#1}}
+\newcommand{\head}[2]{%
+  {\fontsize{17}{18}\selectfont\bfseries\color{ink}Guía de ejercicios de optimización}
+  \hfill{\fontsize{11}{12}\selectfont\bfseries\color{accent}#1}\par
+  {\fontsize{8.5}{10}\selectfont\color{muted}#2}\par
+  \vspace{2mm}{\color{ink}\hrule height 0.6pt}\vspace{2mm}}
+\newsavebox{\ColA}
+\newsavebox{\ColB}
+\newsavebox{\ColC}
+\newcommand{\capture}[2]{%
+  \sbox{#1}{\begin{minipage}[t]{0.321\textwidth}
+    \fontsize{8.7}{9.9}\selectfont
+    \RaggedRight
+    #2
+  \end{minipage}}}
+\newcommand{\placecols}{%
+  \typeout{COLUMN A HEIGHT: \the\dimexpr\ht\ColA+\dp\ColA\relax}
+  \typeout{COLUMN B HEIGHT: \the\dimexpr\ht\ColB+\dp\ColB\relax}
+  \typeout{COLUMN C HEIGHT: \the\dimexpr\ht\ColC+\dp\ColC\relax}
+  \noindent\usebox{\ColA}\hfill\usebox{\ColB}\hfill\usebox{\ColC}}
+\begin{document}
+
+\head{CARA A}{Conjuntos y poliedros · Símplex · Sensibilidad · Punto interior}
+
+\capture{\ColA}{
+\block{01}{Conjuntos y combinaciones}
+\lead{Dibujo.} Escribe las desigualdades; elige el lado con un punto de prueba. Comprueba intersecciones y dominio.
+
+\lead{¿Convexo?} Para probarlo, comprueba el segmento
+\(x_\lambda=\lambda u+(1-\lambda)v\), \(0\le\lambda\le1\).
+Para refutarlo basta dar \(u,v\in F\) con un punto del segmento fuera.
+
+\lead{Combinación convexa.} Con los puntos como columnas de \(P\), resuelve
+\[
+ P\lambda=p,\qquad \mathbf1\T\lambda=1,\qquad \lambda\ge0.
+\]
+Para reducirla a \(\le n+1\) puntos: usa solo los pesos positivos; busca
+\((P;\mathbf1\T)\mu=0\), \(\mu\ne0\), y haz
+\[
+ t=\min_{\mu_i>0}\frac{\lambda_i}{\mu_i},
+ \qquad \lambda\leftarrow\lambda-t\mu.
+\]
+Quita pesos nulos y repite.
+
+\block{02}{Proyección y planos}
+\lead{1.} Si \(p\in F\), su proyección es \(p\).
+Si no, minimiza \(\frac12\norm{x-p}^2\) en \(F\).
+
+\lead{2.} Genera candidatos en fronteras e intersecciones; filtra y compara distancias. Puedes usar KKT (cara B).
+
+\lead{3.} Con proyección \(q\), toma \(n=p-q\). Para \(F\) cerrado y convexo:
+\[
+ \underbrace{n\T(x-q)=0}_{\text{soporte en }q},
+ \qquad
+ \underbrace{n\T\!\left(x-\frac{p+q}{2}\right)=0}_{\text{separador si }p\notin F}.
+\]
+Para un soporte en un \(q\) dado, busca \(n\ne0\) y verifica
+\(n\T(x-q)\le0\) para todo \(x\in F\).
+Un punto interior de un conjunto con interior no tiene soporte.
+
+\block{03}{Forma estándar y bases}
+Objetivo: \(Ax=b,\ x\ge0\), conservando min/max.
+\[
+ x_j\text{ libre}:x_j=u_j-v_j;\qquad x_j\le0:x_j=-u_j.
+\]
+Restricción \(\le\): suma holgura; \(\ge\): resta exceso.
+Si \(b_i<0\), multiplica la fila por \(-1\) e invierte el signo.
+
+Quita igualdades redundantes compatibles. Sea \(m=\operatorname{rg}A\).
+Escoge \(m\) columnas independientes: \(B=A_{:,J}\), resto \(D\).
+\[
+ x_B=B^{-1}b,\quad x_D=0.
+\]
+\(x_B\ge0\): base factible; algún básico nulo: degenerada.
+Para puntos extremos, enumera bases factibles y quita puntos repetidos.
+Para un \(j\) no básico, si \(y=B^{-1}a_j\le0\):
+\[
+ d_B=-y,\quad d_j=1,\quad d_{\ell}=0\ (\ell\notin B\cup\{j\}).
+\]
+Comprueba \(Ad=0,\ d\ge0,\ d\ne0\); identifica rayos proporcionales.
+En curvas no basta buscar intersecciones: puede haber infinitos extremos.
+}
+
+\capture{\ColB}{
+\block{04}{Símplex: una iteración}
+\lead{1. Construye la tabla} para una base factible:
+\[
+ \bar A=B^{-1}A,\quad \bar b=B^{-1}b,\quad
+ \pi=B\invT c_B,
+\]
+\[
+ r=c-A\T\pi,\qquad z=c_B\T\bar b.
+\]
+Los básicos tienen coste reducido cero. En la tabla de clase, el término independiente de la fila \(r\) es \(-z\).
+
+\lead{2. Comprueba optimalidad.}
+\[
+ \begin{array}{c|c|c}
+ &\text{óptimo}&\text{entra una no básica}\\ \hline
+ \min&r_j\ge0\ \forall j&r_j<0\\
+ \max&r_j\le0\ \forall j&r_j>0
+ \end{array}
+\]
+Criterio habitual: coste más negativo (min) o más positivo (max).
+Bland: menor índice elegible; en empates de salida, menor índice básico.
+
+\lead{3. Busca la salida.} Para la entrante \(j\), toma \(y=\bar A_{:,j}\).
+Si ningún \(y_i>0\), hay mejora no acotada. Si no:
+\[
+ \theta=\min_{y_i>0}\frac{\bar b_i}{y_i}.
+\]
+Sale la variable básica de la fila que alcanza el mínimo.
+\(\theta=0\) permite pivote degenerado.
+
+\lead{4. Pivota.} Divide la fila pivote por el pivote; anula esa columna en las demás filas y en \(r\). Actualiza base, \(x\) y \(z\); repite.
+
+\lead{Casos especiales.} \(\bar b\not\ge0\): no inicies símplex primal desde esa tabla.
+Un \(r_j=0\) no básico es candidato a óptimo alternativo: comprueba que permita un desplazamiento factible no nulo.
+
+\block{05}{Dos fases y M grande}
+\lead{1.} Tras normalizar \(b\), añade artificiales donde falte una base inicial.
+
+\lead{2. Fase I:} minimiza la suma de artificiales.
+Óptimo \(>0\): infactible. Óptimo \(=0\): continúa.
+
+\lead{3.} Saca de la base las artificiales nulas con un pivote original. Si su fila no tiene tal pivote, elimina la fila redundante compatible.
+
+\lead{4. Fase II:} elimina artificiales, recupera \(c\) y recalcula \(r,z\).
+
+\lead{M grande.} Penaliza artificiales con \(+M\) en min o \(-M\) en max.
+Si la tabla es simbólica, compara primero el coeficiente de \(M\), después la constante; no sustituyas \(M\) por un número arbitrario.
+
+\block{06}{Sensibilidad de los costes}
+Parte de una base óptima y cambia \lead{un coste cada vez}, sumándole \(\delta\).
+No básica \(j\): \(r_j'=r_j+\delta\), resto igual.
+Para un coste básico \(q\):
+\[
+ r_D'=r_D-\delta(B^{-1}D)_{q,:}\T.
+\]
+Impón \(r_D'\ge0\) en min o \(r_D'\le0\) en max; despeja \(\delta\) e intersecta las cotas.
+Dentro del intervalo, \(x\) no cambia.
+Si cambia \(c_{B_q}\), \(z'=z+\delta x_{B_q}\).
+Convierte el intervalo de \(\delta\) al del coeficiente pedido.
+}
+
+\capture{\ColC}{
+\block{07}{Sensibilidad de \(b\)}
+Con la base óptima fija y \(b'=b+\delta e_i\), calcula
+\(h=B^{-1}e_i\) y exige \(\bar b+\delta h\ge0\):
+\[
+ \delta_{\min}=\max_{h_q>0}\frac{-\bar b_q}{h_q},
+ \qquad
+ \delta_{\max}=\min_{h_q<0}\frac{-\bar b_q}{h_q}.
+\]
+Una familia vacía da \(-\infty\) o \(+\infty\).
+Las filas \(h_q=0\) no añaden cota si \(\bar b_q\ge0\).
+
+Dentro del intervalo:
+\[
+ x_B'=\bar b+\delta h,\qquad z'=z+\pi_i\delta.
+\]
+Fuera del intervalo, reoptimiza: el precio sombra no se extrapola.
+
+\block{08}{Añadir variables o restricciones}
+\lead{Variable nueva} con columna \(a\) y coste \(c_{\rm n}\):
+\[
+ y=B^{-1}a,\qquad r_{\rm n}=c_{\rm n}-\pi\T a.
+\]
+Si respeta el signo de optimalidad, la solución actual sigue siendo óptima con variable nueva cero. Si no, introdúcela y pivota; usa \(y\) en el cociente de salida.
+
+\lead{Restricción nueva.} Evalúala en \(x^*\).
+Si se cumple, \(x^*\) sigue siendo óptima.
+Si no, la tabla anterior ya no representa una solución factible del nuevo problema: busca nueva base factible y reoptimiza.
+
+\block{09}{Escalado afín de paso largo}
+Trabaja en \lead{min} \(c\T x\), \(Ax=b,\ x>0\).
+Para max cambia \(c\) por \(-c\).
+Comprueba que \(A\) tenga rango fila completo.
+
+\lead{Inicio.} Si \(x^0>0\) y \(Ax^0\ne b\), toma
+\(s=b-Ax^0\) y añade \(st\) a las restricciones, con \(t^0=1\);
+penaliza \(t\) en el objetivo.
+
+\lead{Iteración.} Con \(X=\operatorname{diag}(x)\):
+\[
+ K=AX^2A\T,\qquad
+ K\eta=AX^2c,\qquad
+ d=-X^2(c-A\T\eta).
+\]
+Comprueba \(Ad=0\). Para \(d\ne0\), verifica \(c\T d<0\).
+Si \(d\ge0\) y mejora, la solución es no acotada.
+Si algún \(d_i<0\):
+\[
+ \alpha=\rho\min_{d_i<0}\frac{-x_i}{d_i},
+ \qquad x^+=x+\alpha d.
+\]
+Usa el \(\rho\) indicado, \(0<\rho<1\) (habitual \(0.95\)--\(0.9995\)); \(\rho=1\) perdería interioridad.
+Criterio numérico de clase:
+\[
+ \frac{|c\T x^+-c\T x|}{1+|c\T x|}<\varepsilon.
+\]
+Verifica factibilidad y \(x^+>0\). Mejorar poco no certifica óptimo.
+
+\lead{Control PL.} Vuelve a variables y signos originales. Verifica restricciones y objetivo. Región no acotada no implica objetivo no acotado.
+}
+\placecols
+
+\newpage
+\head{CARA B}{Convexidad y KKT · Búsquedas e iteraciones · Gradiente reducido · Penalizaciones}
+
+\capture{\ColA}{
+\block{10}{Convexidad y puntos estacionarios}
+\lead{1. Dominio.} Logaritmos: argumento \(>0\); denominadores \(\ne0\); raíces reales: radicando \(\ge0\).
+Comprueba si el dominio es convexo.
+
+\lead{2. Deriva.} Calcula \(v=\nabla f\) y \(H=\nabla^2 f\).
+Convexidad: \(H\) PSD; concavidad: \(H\) NSD, en \lead{todo el dominio}, no solo en un punto. En puntos no derivables usa la definición u otra caracterización adecuada.
+
+\lead{3. Clasifica la matriz.} Definida positiva: menores principales iniciales \(\Delta_k>0\).
+Definida negativa: \((-1)^k\Delta_k>0\).
+Para semidefinición usa autovalores o \lead{todos} los menores principales, no solo los iniciales.
+PSD: \(\lambda_i\ge0\); NSD: \(\lambda_i\le0\).
+
+\lead{4. Puntos críticos.} Resuelve \(v=0\), filtra por dominio y evalúa \(H\): positiva definida, mínimo estricto; negativa definida, máximo estricto; indefinida, silla.
+Semidefinida: \lead{inconcluso}; compara \(f-f(p)\) en caminos.
+\(v=0\) solo significa estacionario.
+
+\block{11}{Lagrange y KKT}
+Para máximos, usa min \(-f\). Si piden ambos extremos, revisa \(f\) y \(-f\). Escribe
+\(h=0,\ g_j\le0\) y
+\[
+ L=f+\lambda\T h+\mu\T g,\qquad \mu\ge0.
+\]
+\lead{1.} Elige un conjunto de desigualdades activas \(S\).
+Pon \(g_j=0\) en \(S\) y \(\mu_j=0\) fuera.
+
+\lead{2.} Resuelve \(\nabla_xL=0,\ h=0,\ g_S=0\).
+
+\lead{3.} Filtra con \lead{todas} las restricciones y
+\(\mu\ge0,\ \mu_jg_j=0\).
+
+\lead{4. Regularidad.} Apila los gradientes de igualdades y de todas las desigualdades realmente activas.
+Compara rango con número de filas.
+Si hay dependencia, estudia ese punto aparte: KKT puede omitir extremos no regulares.
+
+\lead{5. Clasificación con igualdades.} Si \(Z\) es una base de \(\ker Jh\), calcula \(Z\T H_LZ\), con
+\(H_L=\nabla^2_{xx}L\).
+Positiva definida: mínimo estricto; negativa definida: máximo estricto; indefinida: silla sobre la variedad. Semidefinida: inconcluso. Recupera después el objetivo original.
+
+\lead{6. Con desigualdades.} Examina las direcciones críticas:
+\(Jh\,d=0\);
+para activas con \(\mu_j>0\), \(\nabla g_j\T d=0\);
+para activas con \(\mu_j=0\), \(\nabla g_j\T d\le0\).
+Comprueba \(d\T H_Ld\) en esas direcciones.
+Positivo para todo \(d\ne0\) certifica mínimo estricto; un valor negativo descarta mínimo.
+También puedes parametrizar fronteras y comparar valores.
+
+\lead{Al concluir.} Recupera min/max original y distingue local de global.
+No clasifiques un problema restringido con \(H_f\) en todo el espacio.
+
+\block{12}{Entropía}
+\lead{Entropía.} Variables \(p_i\ge0\);
+\(\sum p_i=1,\ \sum u_ip_i=\bar u\).
+Maximiza \(-\sum p_i\ln p_i\).
+Para una solución interior:
+\[
+ p_i=\frac{e^{\eta u_i}}{\sum_j e^{\eta u_j}}.
+\]
+Determina \(\eta\) con la media y comprueba probabilidades.
+
+}
+
+\capture{\ColB}{
+\block{13}{Búsquedas en una variable}
+\lead{Sección áurea.} Para un intervalo unimodal:
+\[
+ \phi=\frac{\sqrt5-1}{2},\quad
+ u=a+(1-\phi)(b-a),\quad v=a+\phi(b-a).
+\]
+Min: si \(f(u)\le f(v)\), pon \(b=v\); si no, \(a=u\).
+Max: invierte la comparación.
+Reutiliza la evaluación del punto conservado.
+Para cuando \(b-a<\varepsilon\); da intervalo y estimación central.
+
+\lead{Bisección para optimizar.} \(s=(a+b)/2\).
+Si \(f'(s)=0\), para.
+Min: \(f'(s)<0\Rightarrow a=s\); si no, \(b=s\).
+Max: al revés.
+Repite hasta \(b-a<\varepsilon\).
+Trabaja con la \lead{derivada}, no con el signo de \(f(s)\).
+
+\lead{Newton 1D.}
+\[
+ x^+=x-\frac{f'(x)}{f''(x)}.
+\]
+Comprueba \(f''(x)\ne0\).
+Parada: \(|f'(x)|<\varepsilon\) o
+\(|x^+-x|<\varepsilon\), según el ejercicio.
+Clasifica después con \(f''\) o cambio de signo.
+Tabla: \(k,x,f',f'',x^+\).
+Áurea/bisección: registra intervalo y puntos en cada paso.
+
+\block{14}{Coordenadas, gradiente y Newton}
+\lead{Búsqueda lineal.} Dada \(d\), construye
+\(\psi(\alpha)=f(x+\alpha d)\).
+Resuelve \(\psi'=0\), clasifica con \(\psi''\) y respeta el intervalo admisible.
+En estos ejercicios se permiten extremos \lead{locales} en la búsqueda lineal.
+
+\lead{Coordenadas.} Empieza \(y=x^{k-1}\).
+Para \(i=1,\ldots,n\), optimiza \(f(y+\alpha e_i)\) y actualiza \(y\).
+Al completar \lead{todo el ciclo}, \(x^k=y\).
+
+\lead{Gradiente.} Min: \(d=-\nabla f(x)\);
+max: \(d=\nabla f(x)\).
+Busca \(\alpha>0\) y haz \(x^+=x+\alpha d\).
+
+\lead{Newton multivariable.} Resuelve
+\(H(x)p=-\nabla f(x)\), luego \(x^+=x+p\).
+Comprueba que \(H\) sea invertible; no añadas una búsqueda lineal si se pide el Newton de los apuntes.
+
+\block{15}{Dos gradientes conjugados}
+Dentro de cada ciclo: \(y_0=x^{k-1}\), \(d_0=-v(y_0)\).
+\lead{Variante con Hessiana de clase:}
+\[
+ \alpha=\frac{-v(y)\T d}{d\T H(y)d},
+ \quad y^+=y+\alpha d,\quad
+ \beta=\frac{v(y^+)\T H(y)d}{d\T H(y)d}.
+\]
+\lead{Fletcher--Reeves:} elige \(\alpha\) por búsqueda lineal y usa
+\[
+ \beta=\frac{\norm{v(y^+)}^2}{\norm{v(y)}^2}.
+\]
+En ambas, \(d^+=-v(y^+)+\beta d\).
+Tras \(n\) subpasos, \(x^k=y_n\) y reinicia.
+Comprueba denominadores; si \(v=0\), termina.
+
+\lead{Si piden \(k=3\):} cuenta ciclos y subpasos como en clase.
+Registra \(x,v,d,\alpha,f(x)\) sin redondear prematuramente.
+}
+
+\capture{\ColC}{
+\block{16}{Gradiente reducido}
+Para \(Ax=b\), elige columnas dependientes \(B\) invertible y libres \(D\):
+\[
+ x_B=B^{-1}(b-Dx_D),\qquad
+ r_D=v_D-D\T B\invT v_B.
+\]
+En min, \(d_D=-r_D\), \(d_B=-B^{-1}Dd_D\).
+Busca el mínimo local de \(f(x+\alpha d)\) y actualiza.
+En max invierte la dirección.
+Comprueba \(Ax^+=b\).
+Aquí no impongas \(x\ge0\) salvo que forme parte del problema.
+
+\block{17}{Wolfe con \(x\ge0\)}
+\lead{1.} Elige \(m\) variables de mayor valor, exigiendo columnas independientes; forman \(B\). El resto forma \(D\).
+\[
+ r=v-A\T B\invT v_B.
+\]
+\lead{2.} En min, para las no básicas:
+\[
+ d_j=
+ \begin{cases}
+  -r_j,&r_j<0,\\
+  -x_jr_j,&r_j\ge0,
+ \end{cases}
+ \qquad d_B=-B^{-1}Dd_D.
+\]
+\lead{3.} Calcula el paso factible:
+\[
+ \alpha_{\max}=\min_{d_j<0}\frac{-x_j}{d_j}
+ \quad(\text{sin tales }j:\ +\infty).
+\]
+Minimiza \(\psi(\alpha)=f(x+\alpha d)\) en
+\([0,\alpha_{\max}]\), incluyendo extremos.
+Actualiza y verifica \(x^+\ge0,\ Ax^+=b\).
+Si \(d=0\), comprueba las condiciones KKT.
+Para max transforma primero el objetivo.
+
+\block{18}{Penalización cuadrática y absoluta}
+Normaliza a min, con \(g_j\le0,\ h_i=0\).
+\[
+ P_2=\sum_j\max(0,g_j)^2+\sum_i h_i^2,
+ \qquad
+ P_1=\sum_j\max(0,g_j)+\sum_i|h_i|.
+\]
+Para \lead{cada peso} pedido, resuelve min \(f+wP\).
+Con valores absolutos, separa regiones de signo y revisa también los puntos no derivables.
+Tabla: \(w,x^*,f(x^*),P(x^*)\) y violación de restricciones.
+No confundas minimizar la función penalizada con ser factible para el problema original.
+
+\block{19}{Verosimilitud}
+Escribe soporte y dominio de parámetros.
+Usa \(\ell(\theta)=\sum_i\ln f(t_i;\theta)\).
+Busca puntos críticos \lead{y fronteras}; compara.
+Si el soporte depende de un parámetro, conserva esa restricción al optimizar.
+
+\lead{Control final.} Factibilidad, dominio, tipo de extremo y valor del objetivo original. Una derivada nula o un cambio pequeño de iterado no bastan por sí solos para anunciar un óptimo.
+}
+\placecols
+\end{document}

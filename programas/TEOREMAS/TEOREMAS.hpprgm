@@ -1,0 +1,507 @@
+// TEOREMAS 1.0 - Resultados de los temas 1 y 2 (Optimizacion Continua UMH).
+// Cada funcion abre una pantalla vacia; tecla 1: siguiente paso;
+// cualquier otra tecla: salir. "&&" dentro de un paso fuerza salto de linea.
+// TEOREMAS() muestra un indice con todas las funciones.
+
+// Parte un texto en lineas de como mucho w caracteres.
+TLineas(s,w)
+BEGIN
+  LOCAL out,lin,pal,k,c,n;
+  out:={};
+  lin:="";
+  pal:="";
+  n:=DIM(s);
+  FOR k FROM 1 TO n+1 DO
+    IF k<=n THEN
+      c:=MID(s,k,1);
+    ELSE
+      c:=" ";
+    END;
+    IF c==" " THEN
+      IF pal=="&&" THEN
+        out(SIZE(out)+1):=lin;
+        lin:="";
+      ELSE
+        IF pal<>"" THEN
+          IF lin=="" THEN
+            lin:=pal;
+          ELSE
+            IF DIM(lin)+1+DIM(pal)>w THEN
+              out(SIZE(out)+1):=lin;
+              lin:=pal;
+            ELSE
+              lin:=lin+" "+pal;
+            END;
+          END;
+        END;
+      END;
+      pal:="";
+    ELSE
+      pal:=pal+c;
+    END;
+  END;
+  IF lin<>"" THEN
+    out(SIZE(out)+1):=lin;
+  END;
+  RETURN out;
+END;
+
+TTecla()
+BEGIN
+  LOCAL k;
+  REPEAT
+    k:=GETKEY;
+    IF k==-1 THEN
+      WAIT(0.02);
+    END;
+  UNTIL k<>-1;
+  RETURN k;
+END;
+
+// Muestra los pasos uno a uno: 1 = siguiente, otra tecla = salir.
+TVer(pasos)
+BEGIN
+  LOCAL k,y,lin,j,n,h,w;
+  h:=15;
+  w:=46;
+  RECT_P();
+  WAIT(0.3);
+  WHILE GETKEY<>-1 DO
+    WAIT(0.01);
+  END;
+  y:=3;
+  n:=SIZE(pasos);
+  FOR k FROM 1 TO n DO
+    IF TTecla()<>42 THEN
+      RETURN "";
+    END;
+    lin:=TLineas(pasos(k),w);
+    IF y+h*SIZE(lin)>236 AND y>3 THEN
+      RECT_P();
+      y:=3;
+    END;
+    FOR j FROM 1 TO SIZE(lin) DO
+      TEXTOUT_P(lin(j),3,y,2,RGB(0,0,0));
+      y:=y+h;
+    END;
+    y:=y+5;
+    IF k==n THEN
+      TEXTOUT_P("fin",298,226,1,RGB(160,160,160));
+    END;
+  END;
+  TTecla();
+  RETURN "";
+END;
+
+// ================= TEMA 1 =================
+
+EXPORT T1OPTIMO()
+BEGIN
+  RETURN TVer({
+    "DEFINICIONES DE OPTIMO (T1)",
+    "Modelo: min{f(x) : x∈F} (resp. max). Minimizar f equivale a maximizar -f.",
+    "Elementos: variables de decision x∈X; funcion objetivo f(x)∈ℝ^d; restricciones que definen el conjunto factible F.",
+    "x* es SOLUCION FACTIBLE si x*∈F.",
+    "x* es OPTIMO LOCAL si ∃ε>0 tal que f(x*) ≤ f(x) ∀x∈F con ||x-x*||2 < ε (max: f(x*) ≥ f(x)). Si la desigualdad es estricta: optimo local estricto.",
+    "x* es OPTIMO GLOBAL si es factible y f(x*) ≤ f(x) ∀x∈F (max: ≥). Si es estricta: optimo global estricto."
+  });
+END;
+
+EXPORT T1MODELO()
+BEGIN
+  RETURN TVer({
+    "MODELIZACION MATEMATICA (T1)",
+    "Etapas: definicion del problema, construccion del modelo, solucion, validacion e implantacion de resultados.",
+    "Definicion: meta u objetivo; alternativas de decision; limitaciones, restricciones y requisitos.",
+    "Construccion: variables de decision (con su naturaleza numerica), funcion objetivo en funcion de ellas, restricciones (definen el conjunto factible) y sentido: max o min.",
+    "Solucion y validacion: optimalidad, analisis de sensibilidad, validacion, implementacion.",
+    "Formas: min{f(x): x∈F}; min f(x) s.a. g_j(x) ≤ 0 (j∈J), h_k(x) = 0 (k∈K), x∈ℝ^n."
+  });
+END;
+
+EXPORT T1ABS()
+BEGIN
+  RETURN TVer({
+    "VALOR ABSOLUTO EN UN MODELO (T1)",
+    "En el objetivo: min/max |f(x)| s.a. x∈F && → min/max t+ + t- s.a. f(x) = t+ - t-, t+·t- = 0 (¿?), x∈F, t+, t- ≥ 0.",
+    "Restriccion |g(x)| ≤ k && <=> g(x) ≤ k y g(x) ≥ -k.",
+    "Restriccion |g(x)| ≥ k && <=> g(x) ≥ k - y1·M, g(x) ≤ -k + y2·M, y1 + y2 = 1, y1, y2 ∈ {0,1}.",
+    "Restriccion |g(x)| = k && <=> y1·g(x) = y1·k, y2·g(x) = -y2·k, y1 + y2 = 1, y1, y2 ∈ {0,1}.",
+    "En una variable: imponer x ≥ 0, o cambiar x = t+ - t- con t+, t- ≥ 0 y t+·t- = 0; donde aparezca |x| poner t+ + t- y donde no, t+ - t-."
+  });
+END;
+
+EXPORT T1BINAR()
+BEGIN
+  RETURN TVer({
+    "VARIABLES BINARIAS (T1)",
+    "Modelizan: implicaciones, seleccion y activacion de unidades, expresiones logicas, valores excluyentes, costes fijos, aproximaciones lineales. Pregunta Si(1)/No(0) → variable auxiliar y_j o δ_j.",
+    "yi = 0 ⇒ yj = 0  <=>  yj ≤ yi",
+    "yi = 0 ⇒ yj = 1  <=>  yj ≥ 1 - yi",
+    "yi = 1 ⇒ yj = 0  <=>  yj ≤ 1 - yi",
+    "yi = 1 ⇒ yj = 1  <=>  yj ≥ yi (en los apuntes pone 1 - yi: errata)",
+    "Activar una variable: L·yi ≤ xi ≤ U·yi, yi ∈ {0,1}. Coste fijo de activacion Ci: sumar Ci·yi al objetivo.",
+    "Activar una restriccion (y=1 la activa): && Σ ai·xi + M·y ≤ b + M && Σ ai·xi - M·y ≥ b - M && Igualdad: Σ ai·xi ≤ b + M(1-y) y Σ ai·xi ≥ b - M(1-y)."
+  });
+END;
+
+EXPORT T1MAXMIN()
+BEGIN
+  RETURN TVer({
+    "MAXIMIN Y MINIMAX (T1)",
+    "max min{f1(x),...,fk(x)} s.a. x∈F && <=> max z s.a. fi(x) ≥ z, i = 1..k, x∈F.",
+    "min max{f1(x),...,fk(x)} s.a. x∈F && <=> min z s.a. fi(x) ≤ z, i = 1..k, x∈F."
+  });
+END;
+
+EXPORT T1GRAF()
+BEGIN
+  RETURN TVer({
+    "RESOLUCION GRAFICA (T1)",
+    "1) Dibujar cada restriccion como recta (con =) y quedarse con el semiplano que la cumple (probar un punto, p.ej. (0,0)).",
+    "2) Region factible F = interseccion de semiplanos (con x, y ≥ 0). Hallar sus vertices cortando las rectas.",
+    "3) Dibujar rectas de nivel z = c1·x + c2·y (z = 2, 4, 6...) y ver hacia donde mejora z.",
+    "4) Desplazar la recta de nivel en el sentido de mejora hasta el ultimo punto de F: ese vertice es el optimo x*.",
+    "5) Valor optimo z* = c·x*. Ej.: max 3x + 2y s.a. -2x+y ≤ 2, x-2y ≤ 3, x+2y ≤ 5 → x* = 4, y* = 1/2, z* = 13.",
+    "Casos: recta de nivel paralela a una arista optima ⇒ optimos multiples; F no acotada en la direccion de mejora ⇒ no acotado; F = ∅ ⇒ infactible.",
+    "Entero: solo valen los puntos enteros de F; el optimo puede no ser un vertice y redondear puede fallar.",
+    "No lineal: el optimo puede estar en un punto de tangencia (derivada de la frontera = pendiente de la recta de nivel), p.ej. (√(4-x^2))' = -3 ⇒ x = 6/√10."
+  });
+END;
+
+EXPORT T1SENSIB()
+BEGIN
+  RETURN TVer({
+    "ANALISIS DE SENSIBILIDAD GRAFICO (T1)",
+    "Coeficientes del objetivo: x* sigue optimo mientras la pendiente -c1/c2 de la recta de nivel este entre las pendientes de las restricciones activas en x*.",
+    "Ej. z = 3x + 2y, activas x+2y = 5 (pendiente -1/2) y x-2y = 3 (pendiente 1/2).",
+    "Cambiar c1 = a (a ≥ 0): -a/2 ≤ -1/2 ⇒ a ∈ [1, +∞[.",
+    "Cambiar c2 = b: (b ≥ 0) -3/b ≤ -1/2 ⇒ b ≤ 6; (b ≤ 0) -3/b ≥ 1/2 ⇒ b ≥ -6 ⇒ b ∈ [-6, 6].",
+    "Terminos independientes: mover la recta paralelamente; el rango de bi es el intervalo en que el optimo sigue definido por las mismas restricciones activas (hasta chocar con otro vertice). Ej.: b1 ∈ [-7.5, +∞[, b2 ∈ [-4.6, 5], b3 ∈ [3, +∞[.",
+    "Restriccion no activa (con holgura): precio sombra 0; bi puede moverse hasta el valor que toma en x*.",
+    "Precio sombra yi = Δz*/Δbi dentro del rango: z(bi) = z* + yi·(bi - bi0)."
+  });
+END;
+
+// ================= TEMA 2 =================
+
+EXPORT T2CONVEX()
+BEGIN
+  RETURN TVer({
+    "CONJUNTOS AFINES Y CONVEXOS (T2)",
+    "A ⊂ ℝ^n es AFIN si ∀x1, x2 ∈ A: λx1 + (1-λ)x2 ∈ A ∀λ ∈ ℝ.",
+    "C ⊂ ℝ^n es CONVEXO si ∀x1, x2 ∈ C: λx1 + (1-λ)x2 ∈ C ∀λ ∈ [0,1].",
+    "Propiedad 1: la interseccion de una familia arbitraria de conjuntos convexos es un conjunto convexo o es vacia.",
+    "Propiedad 2: C convexo y α ∈ ℝ ⇒ αC es convexo.",
+    "Propiedad 3: C convexo y α, β ∈ ℝ+ ⇒ (α+β)C = αC + βC.",
+    "Propiedad 4: C, D convexos ⇒ C + D es convexo.",
+    "Dem.: 1, 2 y 4 aplicando directamente la definicion de conjunto convexo. 3 por doble inclusion y la definicion."
+  });
+END;
+
+EXPORT T2EXTREM()
+BEGIN
+  RETURN TVer({
+    "PUNTOS Y DIRECCIONES EXTREMAS (T2)",
+    "C convexo. c ∈ C es PUNTO EXTREMO si no se puede escribir como combinacion lineal convexa de dos puntos distintos de C, ambos distintos de c.",
+    "d ∈ ℝ^n es DIRECCION de C si ∀c ∈ C: c + αd ∈ C ∀α ≥ 0.",
+    "d es DIRECCION EXTREMA si es direccion de C y no se puede escribir como combinacion lineal positiva de dos direcciones distintas de C, ambas distintas de d.",
+    "C acotado ⇒ no tiene direcciones. En un dibujo: puntos extremos = vertices (y todos los puntos de un arco curvo); direcciones extremas = las de los rayos de la frontera."
+  });
+END;
+
+EXPORT T2HIPER()
+BEGIN
+  RETURN TVer({
+    "HIPERPLANOS Y SEMIESPACIOS (T2)",
+    "Hiperplano con normal n que pasa por x0: && H = {x ∈ ℝ^n : n^t(x - x0) = 0}.",
+    "Semiespacios cerrados: && H+ = {x : n^t(x - x0) ≥ 0} && H- = {x : n^t(x - x0) ≤ 0}.",
+    "Forma matricial: a^tx = b. Extendida: a1x1 + a2x2 + ... + anxn = b = Σ ai xi.",
+    "Semiespacio por dos puntos P, Q de la frontera: n = (Qy - Py, Px - Qx), b = n·P; elegir el signo para que un punto interior cumpla n·x ≤ b."
+  });
+END;
+
+EXPORT T2ENVOLT()
+BEGIN
+  RETURN TVer({
+    "COMBINACIONES Y ENVOLTURAS (T2)",
+    "λ1x1 + ... + λkxk es combinacion LINEAL; AFIN si Σ λi = 1; CONVEXA si ademas λi ≥ 0 ∀i.",
+    "afin(A): puntos que son combinacion afin de un numero finito de puntos de A. conv(A): combinacion convexa de un numero finito de puntos de A.",
+    "1) A ⊂ conv(A).  2) A ⊂ B ⇒ conv(A) ⊂ conv(B).",
+    "3) conv(A) es convexo.  4) A es convexo <=> A = conv(A).",
+    "5) conv(A) es el menor conjunto convexo que contiene a A.  6) conv(A) + conv(B) = conv(A + B).",
+    "Dem.: 1 y 2 evidentes. 3: definiciones de envoltura y convexo. 4: doble inclusion e induccion en el numero de puntos. 5: reduccion al absurdo. 6: doble inclusion.",
+    "Politopo = conv de un numero finito de puntos (poligono en ℝ^2, poliedro en ℝ^3, policoro en ℝ^4).",
+    "k-simplice = conv de k+1 puntos afinmente independientes ({x1x2, ..., x1xk+1} linealmente independientes)."
+  });
+END;
+
+EXPORT T2CARATH()
+BEGIN
+  RETURN TVer({
+    "TEOREMA DE CARATHEODORY (T2)",
+    "Sea A ⊂ ℝ^n y x ∈ conv(A). Entonces x se puede escribir como combinacion lineal convexa de a lo sumo n+1 puntos de A.",
+    "Dem. 1) x ∈ conv(A) ⇒ x = Σ(i=1..k) λi·ai, λi > 0.",
+    "2) Si k ≤ n+1, ya se tiene el resultado.",
+    "3) Si k > n+1, a2-a1, a3-a1, ..., ak-a1 son linealmente dependientes: ∃ μi no todos nulos y alguno > 0 con Σ(i=2..k) μi(ai - a1) = 0.",
+    "4) Hacer μ1 = -Σ(i=2..k) μi ⇒ Σ(i=1..k) μi·ai = 0.",
+    "5) Para α > 0: x = Σ λi·ai - α·Σ μi·ai = Σ (λi - α·μi)·ai.",
+    "6) Tomar α = min{λi/μi : μi > 0}: un coeficiente se anula y los demas siguen ≥ 0 con suma 1. Repetir si hace falta."
+  });
+END;
+
+EXPORT T2PROYEC()
+BEGIN
+  RETURN TVer({
+    "TEOREMA DE PROYECCION (T2)",
+    "C ⊂ ℝ^n no vacio, cerrado y convexo, x0 ∈ ℝ^n ⇒ existe un unico c* ∈ C tal que ||x0 - c*||2 ≤ ||x0 - c||2 ∀c ∈ C.",
+    "Dem. 1) Tomar r > 0 con C ∩ B(x0,r) ≠ ∅ (bola cerrada) y d(c) = ||x0 - c||2 en C ∩ B(x0,r).",
+    "2) Weierstrass: d alcanza su minimo global en un c* ∈ C ∩ B(x0,r).",
+    "3) Se demuestra que c* es minimo global en C.",
+    "4) Unicidad: suponer que existe otro punto y demostrar geometricamente que coincide con c*.",
+    "Def.: proy_C(x) = c*, el unico punto de C que minimiza d(x,C).",
+    "Prop. 1) x0 ∉ C ⇒ proy_C(x0) ∈ ∂C.  2) x0 ∈ C ⇒ proy_C(x0) = x0.",
+    "Prop. 3) proy_C(x0) = c* <=> (x0 - c*)^t(c - c*) ≤ 0 ∀c ∈ C.  4) proy_C es continua."
+  });
+END;
+
+EXPORT T2SEPARA()
+BEGIN
+  RETURN TVer({
+    "HIPERPLANO SEPARADOR (T2)",
+    "H separa A y B si A ⊂ H+ y B ⊂ H-. Estrictamente: A ⊂ int(H+) y B ⊂ int(H-). Fuertemente: A ⊂ int(H+ de n, b+ε) y B ⊂ int(H- de n, b-ε). Propia si A ∪ B ⊄ H.",
+    "TEOREMA: C ≠ ∅ cerrado y convexo, x0 ∉ C ⇒ ∃ n ≠ 0 y b ∈ ℝ: (1) n^tc ≤ b ∀c ∈ C y (2) n^tx0 > b.",
+    "Dem. 1) Tomar c0 = proy_C(x0) ∈ C.",
+    "2) Por la proposicion de proyeccion: (x0 - c0)^t(c - c0) ≤ 0 ∀c ∈ C.",
+    "3) Definir n = x0 - c0 y b = n^tc0.",
+    "4) Comprobar que H cumple las condiciones: n^tc ≤ b en C y n^tx0 - b = ||x0 - c0||^2 > 0.",
+    "Corolario: C, D convexos no vacios con C ∩ D = ∅ ⇒ ∃ n ≠ 0: inf{n^tc : c ∈ C} ≥ sup{n^td : d ∈ D}."
+  });
+END;
+
+EXPORT T2SOPORT()
+BEGIN
+  RETURN TVer({
+    "HIPERPLANO SOPORTE (T2)",
+    "H es hiperplano soporte de A en a0 ∈ A si: 1) a0 ∈ A ∩ H y 2) A ⊂ H+ o A ⊂ H-. Ese semiespacio es el semiespacio soporte de A en a0.",
+    "TEOREMA: C ≠ ∅ convexo y c0 ∈ ∂C ⇒ existe un hiperplano soporte de C en c0.",
+    "Calculo con C = {g ≤ 0}, g convexa: n = ∇g(c0), H: n^tx = n^tc0, C ⊂ {n^tx ≤ n^tc0}. En un vertice vale cualquier combinacion con pesos ≥ 0 de las normales activas."
+  });
+END;
+
+EXPORT T2FARKAS()
+BEGIN
+  RETURN TVer({
+    "LEMA DE FARKAS (T2)",
+    "A ∈ ℝ^(m×n), b ∈ ℝ^n. Uno y solo uno de estos sistemas tiene solucion: && (1) Ax ≤ 0m y b^tx > 0 para algun x ∈ ℝ^n. && (2) A^ty = b, y ≥ 0m para algun y ∈ ℝ^m.",
+    "Dem. 1) Si (2) tiene solucion y*, y Ax* ≤ 0m ⇒ b^tx* = y*^tAx* ≤ 0: (1) no tiene solucion.",
+    "2) Si (2) no tiene solucion, b ∉ C = {x : x = A^ty, y ≥ 0m}. Por el hiperplano separador ∃ n y un escalar a: n^tb > a y n^tx ≤ a ∀x ∈ C.",
+    "3) 0n ∈ C ⇒ a ≥ 0.",
+    "4) a ≥ n^tx = n^tA^ty = y^tAn ∀y ≥ 0m ⇒ An ≤ 0m y b^tn > 0: n resuelve (1)."
+  });
+END;
+
+EXPORT T2GORDAN()
+BEGIN
+  RETURN TVer({
+    "LEMA DE GORDAN (T2)",
+    "A ∈ ℝ^(m×n). Uno y solo uno de estos sistemas tiene solucion:",
+    "(1) Ax < 0m para algun x ∈ ℝ^n.",
+    "(2) A^ty = 0n, y ≥ 0m e y ≠ 0m para algun y ∈ ℝ^m."
+  });
+END;
+
+EXPORT T2POLIED()
+BEGIN
+  RETURN TVer({
+    "CONJUNTOS POLIEDRICOS (T2)",
+    "Sistema lineal: Ax = b, Ax ≤ b o Ax ≥ b con A ∈ ℝ^(m×n) (m restricciones, n incognitas).",
+    "P es POLIEDRICO si es interseccion finita de semiespacios cerrados: P = {x : ai^tx ≤ bi, i = 1..m}, ai ≠ 0.",
+    "Formas: {Ax ≤ b}, {Ax ≤ b, x ≥ 0n}, {Ax ≥ b, x ≥ 0n}, {Ax = b, x ≥ 0n}.",
+    "Holgura: Σ aij·xj ≤ bi <=> Σ aij·xj + si+ = bi. && Exceso: Σ aij·xj ≥ bi <=> Σ aij·xj - si- = bi. && Variable libre: x = x+ - x-.",
+    "P = {Ax = b, x ≥ 0n}, A m×n, m ≤ n, rango m. Solucion: Ax = b. Solucion factible: x ∈ P.",
+    "A = [B|D], B m×m de rango m: x = (xB, xD) = (B^-1b, 0D) es SOLUCION BASICA; si B^-1b ≥ 0 es BASICA FACTIBLE. Con k < m variables no nulas: degenerada."
+  });
+END;
+
+EXPORT T2PEXTPO()
+BEGIN
+  RETURN TVer({
+    "PUNTOS EXTREMOS DE UN POLIEDRO (T2)",
+    "P = {Ax = b, x ≥ 0n}, A m×n, m ≤ n, rango A = m.",
+    "CARACTERIZACION: x0 es punto extremo de P <=> x0 es solucion basica factible.",
+    "NUMERO: el numero de puntos extremos de P es finito (a lo sumo C(n,m)).",
+    "EXISTENCIA: si P ≠ ∅, P tiene al menos un punto extremo.",
+    "Calculo: para cada B (m columnas de A, det ≠ 0) hallar xB = B^-1b; si xB ≥ 0 da un punto extremo (quitar holguras para dar x)."
+  });
+END;
+
+EXPORT T2DEXTPO()
+BEGIN
+  RETURN TVer({
+    "DIRECCIONES EXTREMAS DE UN POLIEDRO (T2)",
+    "P = {Ax = b, x ≥ 0n} ≠ ∅, A m×n, m ≤ n, rango A = m.",
+    "CARACTERIZACION: d es direccion extrema de P <=> A = [B|D] con B^-1a·j ≤ 0m para alguna columna a·j de D, y d es multiplo positivo de (-B^-1a·j ; e_j).",
+    "NUMERO: el numero de direcciones extremas de P es finito.",
+    "Calculo: para cada B factible calcular B^-1D; cada columna j con todo ≤ 0 da d: dB = -B^-1a·j, dj = 1, resto 0."
+  });
+END;
+
+EXPORT T2REPRES()
+BEGIN
+  RETURN TVer({
+    "TEOREMA DE REPRESENTACION (T2)",
+    "P = {Ax = b, x ≥ 0n}, A m×n, m ≤ n, rango m. Puntos extremos x1, ..., xk; direcciones extremas d1, ..., dh.",
+    "x ∈ P <=> x = Σ(i=1..k) λi·xi + Σ(j=1..h) μj·dj, con λi ≥ 0, Σ λi = 1 y μj ≥ 0.",
+    "P acotado ⇒ todo punto de P es combinacion lineal convexa de sus puntos extremos.",
+    "P es no acotado <=> P tiene al menos una direccion extrema."
+  });
+END;
+
+EXPORT T2FCONV()
+BEGIN
+  RETURN TVer({
+    "FUNCIONES CONVEXAS Y CONCAVAS (T2)",
+    "f: C ⊂ ℝ^n → ℝ es CONVEXA si C es convexo y f(λx1 + (1-λ)x2) ≤ λf(x1) + (1-λ)f(x2) ∀x1, x2 ∈ C, ∀λ ∈ [0,1]. Estrictamente convexa si < para λ ∈ ]0,1[.",
+    "CONCAVA: lo mismo con ≥ (estrictamente concava si >). f concava <=> -f convexa.",
+    "Propiedad 1: f1..fk convexas (concavas) y αi > 0 ⇒ Σ αi·fi convexa (concava).",
+    "Propiedad 2: max{f1..fk} es convexa si las fi son convexas; min{f1..fk} es concava si las fi son concavas.",
+    "Propiedad 3: g concava ⇒ f = 1/g es convexa en D = {x : g(x) > 0}.",
+    "Propiedad 4: h(x) = Ax + b afin y g convexa (concava) ⇒ g∘h convexa (concava).",
+    "Propiedad 5: h convexa (concava) y g no decreciente y convexa (concava) ⇒ g∘h convexa (concava).",
+    "Propiedad 6: f convexa (concava) en C ⇒ f continua en el interior de C."
+  });
+END;
+
+EXPORT T2EPIGRA()
+BEGIN
+  RETURN TVer({
+    "CARACTERIZACION GEOMETRICA (T2)",
+    "epi(f) = {(x,y) ∈ ℝ^n × ℝ : x ∈ C, y ≥ f(x)} && hip(f) = {(x,y) : x ∈ C, y ≤ f(x)}.",
+    "C convexo: f es convexa <=> epi(f) es un conjunto convexo.",
+    "C convexo: f es concava <=> hip(f) es un conjunto convexo."
+  });
+END;
+
+EXPORT T2ANALIT()
+BEGIN
+  RETURN TVer({
+    "CARACTERIZACIONES ANALITICAS (T2)",
+    "C ≠ ∅ abierto y convexo, f diferenciable en C: f convexa <=> f(x) ≥ f(x0) + ∇f(x0)^t(x - x0) ∀x, x0 ∈ C. && (concava: ≤)",
+    "f dos veces diferenciable en C: f convexa <=> la hessiana es semidefinida positiva en cada x ∈ C. && (concava <=> semidefinida negativa)",
+    "Dem. 1) ∇f(x0) es el vector normal del hiperplano tangente a f en x0 y del epi(f).",
+    "Dem. 2) Desarrollo de Taylor de orden 2 y el resultado anterior."
+  });
+END;
+
+EXPORT T2SYLVES()
+BEGIN
+  RETURN TVer({
+    "CRITERIO DE SYLVESTER (T2)",
+    "Δk = menor principal lider de orden k: determinante de las k primeras filas y columnas de Hf(x).",
+    "DEFINIDA POSITIVA <=> Δk > 0 ∀k ⇒ f estrictamente convexa.",
+    "DEFINIDA NEGATIVA <=> signos alternos Δ1 < 0, Δ2 > 0, Δ3 < 0... ((-1)^k·Δk > 0) ⇒ f estrictamente concava.",
+    "SEMIDEFINIDA POSITIVA <=> todos los menores principales (no solo lideres) ≥ 0 ⇒ convexa. && SEMIDEFINIDA NEGATIVA <=> menores principales de orden k con signo de (-1)^k o 0 ⇒ concava.",
+    "Si no se cumple nada: INDEFINIDA ⇒ ni convexa ni concava. Si Hf depende de x: estudiar los signos en el dominio.",
+    "Ej.: Hf = [[2,1,0],[1,2,0],[0,0,2]]: Δ1 = 2, Δ2 = 3, Δ3 = 6 ⇒ definida positiva ⇒ estrictamente convexa."
+  });
+END;
+
+EXPORT T2OPTGLO()
+BEGIN
+  RETURN TVer({
+    "OPTIMALIDAD GLOBAL (T2)",
+    "Modelo min/max f(x) s.a. x ∈ F, con f: C ⊂ ℝ^n → ℝ.",
+    "1) min, f CONVEXA, F ⊂ C convexo: minimo local ⇒ minimo global. && max, f CONCAVA, F convexo: maximo local ⇒ maximo global.",
+    "Dem.: considerar un minimo (maximo) local y suponer por reduccion al absurdo que no es global.",
+    "2) min, f ESTRICTAMENTE convexa, F convexo: minimo local ⇒ UNICO minimo global. && max, f estrictamente concava: maximo local ⇒ unico maximo global.",
+    "3) min, f convexa, F convexo: minimo local ESTRICTO ⇒ unico minimo global. && max, f concava: maximo local estricto ⇒ unico maximo global."
+  });
+END;
+
+EXPORT T2CONDOP()
+BEGIN
+  RETURN TVer({
+    "CONDICIONES DE OPTIMALIDAD GLOBAL (T2)",
+    "f diferenciable, F ⊂ C convexo.",
+    "min, f CONVEXA: x* ∈ F es minimo global <=> ∇f(x*)^t(x - x*) ≥ 0 ∀x ∈ F.",
+    "max, f CONCAVA: x* ∈ F es maximo global <=> ∇f(x*)^t(x - x*) ≤ 0 ∀x ∈ F.",
+    "Lectura: en un minimo, toda direccion factible desde x* forma con ∇f(x*) un angulo ≤ 90°; en un maximo, ≥ 90°."
+  });
+END;
+
+EXPORT T2OPTPOL()
+BEGIN
+  RETURN TVer({
+    "OPTIMALIDAD EN CONJUNTOS POLIEDRICOS (T2)",
+    "max, f CONVEXA, F ⊂ C poliedrico acotado ⇒ existe una solucion optima que es un punto extremo de F.",
+    "min, f CONCAVA, F ⊂ C poliedrico acotado ⇒ existe una solucion optima que es un punto extremo de F.",
+    "Uso: hallar los puntos extremos de F, evaluar f en todos y quedarse con el mejor."
+  });
+END;
+
+// ================= INDICE =================
+
+EXPORT TEOREMAS()
+BEGIN
+  LOCAL op;
+  op:=1;
+  CHOOSE(op,"Teoremas T1 y T2",{
+    "T1OPTIMO  Definiciones de optimo",
+    "T1MODELO  Modelizacion",
+    "T1ABS     Valor absoluto",
+    "T1BINAR   Variables binarias",
+    "T1MAXMIN  Maximin / minimax",
+    "T1GRAF    Resolucion grafica",
+    "T1SENSIB  Sensibilidad grafica",
+    "T2CONVEX  Conjuntos convexos",
+    "T2EXTREM  Ptos y dirs extremas",
+    "T2HIPER   Hiperplanos",
+    "T2ENVOLT  Envolturas",
+    "T2CARATH  Caratheodory",
+    "T2PROYEC  Proyeccion",
+    "T2SEPARA  Hiperplano separador",
+    "T2SOPORT  Hiperplano soporte",
+    "T2FARKAS  Lema de Farkas",
+    "T2GORDAN  Lema de Gordan",
+    "T2POLIED  Conjuntos poliedricos",
+    "T2PEXTPO  Ptos extremos poliedro",
+    "T2DEXTPO  Dirs extremas poliedro",
+    "T2REPRES  Representacion",
+    "T2FCONV   Funciones convexas",
+    "T2EPIGRA  Epigrafo e hipografo",
+    "T2ANALIT  Caract. analiticas",
+    "T2SYLVES  Criterio de Sylvester",
+    "T2OPTGLO  Optimalidad global",
+    "T2CONDOP  Condiciones optimalidad",
+    "T2OPTPOL  Optimo en poliedros"});
+  IF op==1 THEN RETURN T1OPTIMO(); END;
+  IF op==2 THEN RETURN T1MODELO(); END;
+  IF op==3 THEN RETURN T1ABS(); END;
+  IF op==4 THEN RETURN T1BINAR(); END;
+  IF op==5 THEN RETURN T1MAXMIN(); END;
+  IF op==6 THEN RETURN T1GRAF(); END;
+  IF op==7 THEN RETURN T1SENSIB(); END;
+  IF op==8 THEN RETURN T2CONVEX(); END;
+  IF op==9 THEN RETURN T2EXTREM(); END;
+  IF op==10 THEN RETURN T2HIPER(); END;
+  IF op==11 THEN RETURN T2ENVOLT(); END;
+  IF op==12 THEN RETURN T2CARATH(); END;
+  IF op==13 THEN RETURN T2PROYEC(); END;
+  IF op==14 THEN RETURN T2SEPARA(); END;
+  IF op==15 THEN RETURN T2SOPORT(); END;
+  IF op==16 THEN RETURN T2FARKAS(); END;
+  IF op==17 THEN RETURN T2GORDAN(); END;
+  IF op==18 THEN RETURN T2POLIED(); END;
+  IF op==19 THEN RETURN T2PEXTPO(); END;
+  IF op==20 THEN RETURN T2DEXTPO(); END;
+  IF op==21 THEN RETURN T2REPRES(); END;
+  IF op==22 THEN RETURN T2FCONV(); END;
+  IF op==23 THEN RETURN T2EPIGRA(); END;
+  IF op==24 THEN RETURN T2ANALIT(); END;
+  IF op==25 THEN RETURN T2SYLVES(); END;
+  IF op==26 THEN RETURN T2OPTGLO(); END;
+  IF op==27 THEN RETURN T2CONDOP(); END;
+  IF op==28 THEN RETURN T2OPTPOL(); END;
+  RETURN "";
+END;

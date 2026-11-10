@@ -1,0 +1,858 @@
+// OPTILIN 1.0 - HP PPL, Home. Arithmetic is numerical.
+// Relations: -1 <=, 0 =, 1 >=. Variable signs: 1 >=0, 0 free, -1 <=0.
+// Sense: 1 max, -1 min. See README.md for result contracts.
+
+EXPORT PLDatos:=[[1,2,6,-1],[2,1,8,-1],[-1,1,1,-1],[0,1,2,-1]];
+EXPORT PLCoste:={3,2};
+EXPORT PLTipo:={1,1};
+EXPORT PLSentido:=1;
+EXPORT PLRes:={};
+EXPORT PLPaso:=0;
+
+// Fraccion exacta si existe con denominador <= 5000; si no, 6 decimales.
+PLFmt(value)
+BEGIN
+  LOCAL r,t,a,p0,q0,p1,q1,p;
+  LOCAL q,k,sg;
+  IF ABS(value)<1E-9 THEN
+    RETURN "0";
+  END;
+  sg:="";
+  IF value<0 THEN
+    sg:="-";
+  END;
+  r:=ABS(value);
+  t:=r;
+  p0:=0; q0:=1; p1:=1; q1:=0;
+  FOR k FROM 1 TO 25 DO
+    a:=FLOOR(t);
+    p:=a*p1+p0;
+    q:=a*q1+q0;
+    p0:=p1; q0:=q1; p1:=p; q1:=q;
+    IF q1>5000 THEN
+      BREAK;
+    END;
+    IF ABS(r-p1/q1)<=1E-9*MAX(1,r) THEN
+      IF q1==1 THEN
+        RETURN sg+STRING(p1);
+      END;
+      RETURN sg+STRING(p1)+"/"+STRING(q1);
+    END;
+    IF t-a<1E-12 THEN
+      BREAK;
+    END;
+    t:=1/(t-a);
+  END;
+  RETURN STRING(ROUND(value,6));
+END;
+
+PLNombre(index,std)
+BEGIN
+  LOCAL origin,signs;
+  origin:=std(6);
+  signs:=std(7);
+  IF origin(index)>0 THEN
+    IF signs(index)<0 THEN
+      RETURN "x"+STRING(origin(index))+"-";
+    END;
+    RETURN "x"+STRING(origin(index))+"+";
+  END;
+  IF std(5,index)>0 THEN
+    RETURN "a"+STRING(index);
+  END;
+  RETURN "s"+STRING(index);
+END;
+
+PLValidar(data,cost,types,sense)
+BEGIN
+  LOCAL dims,rows,cols,i,j,value;
+  IF TYPE(data)<>4 THEN
+    RETURN "Los datos deben ser una matriz.";
+  END;
+  dims:=SIZE(data);
+  IF SIZE(dims)<>2 THEN
+    RETURN "Usa una matriz con filas de restricciones.";
+  END;
+  rows:=dims(1);
+  cols:=dims(2)-2;
+  IF rows<1 OR cols<1 THEN
+    RETURN "Faltan variables o restricciones.";
+  END;
+  IF TYPE(cost)<>6 OR TYPE(types)<>6 THEN
+    RETURN "Coste y signos deben ser listas.";
+  END;
+  IF SIZE(cost)<>cols OR SIZE(types)<>cols THEN
+    RETURN "Coste y signos: un elemento por variable.";
+  END;
+  IF sense<>1 AND sense<>-1 THEN
+    RETURN "Sentido: 1 maximo, -1 minimo.";
+  END;
+  FOR j FROM 1 TO cols DO
+    IF types(j)<>-1 AND types(j)<>0 AND types(j)<>1 THEN
+      RETURN "Signos de variables: -1, 0 o 1.";
+    END;
+    IF TYPE(cost(j))<>0 AND TYPE(cost(j))<>1 THEN
+      RETURN "Los costes deben ser numeros reales.";
+    END;
+  END;
+  FOR i FROM 1 TO rows DO
+    value:=data(i,cols+2);
+    IF value<>-1 AND value<>0 AND value<>1 THEN
+      RETURN "Relacion: -1 <=, 0 =, 1 >=.";
+    END;
+    FOR j FROM 1 TO cols+1 DO
+      IF TYPE(data(i,j))<>0 AND TYPE(data(i,j))<>1 THEN
+        RETURN "Los coeficientes deben ser reales.";
+      END;
+    END;
+  END;
+  RETURN "";
+END;
+
+PLEstandar(data,cost,types,sense)
+BEGIN
+  LOCAL dims,rows,cols,count;
+  LOCAL i,j,k,rel,flip;
+  LOCAL origin:={},signs:={},basis:={},arts:={};
+  LOCAL flips:={},mat,rhs,objective;
+  dims:=SIZE(data);
+  rows:=dims(1);
+  cols:=SIZE(cost);
+  FOR j FROM 1 TO cols DO
+    origin:=CONCAT(origin,{j});
+    IF types(j)==-1 THEN
+      signs:=CONCAT(signs,{-1});
+    ELSE
+      signs:=CONCAT(signs,{1});
+    END;
+    arts:=CONCAT(arts,{0});
+    IF types(j)==0 THEN
+      origin:=CONCAT(origin,{j});
+      signs:=CONCAT(signs,{-1});
+      arts:=CONCAT(arts,{0});
+    END;
+  END;
+  count:=SIZE(origin);
+  FOR i FROM 1 TO rows DO
+    flip:=1;
+    IF data(i,cols+1)<0 THEN
+      flip:=-1;
+    END;
+    flips:=CONCAT(flips,{flip});
+    rel:=flip*data(i,cols+2);
+    IF rel<>0 THEN
+      count:=count+1;
+      origin:=CONCAT(origin,{0});
+      signs:=CONCAT(signs,{0});
+      arts:=CONCAT(arts,{0});
+    END;
+    IF rel>=0 THEN
+      count:=count+1;
+      origin:=CONCAT(origin,{0});
+      signs:=CONCAT(signs,{0});
+      arts:=CONCAT(arts,{1});
+    END;
+    basis:=CONCAT(basis,{count});
+  END;
+  mat:=MAKEMAT(0,rows,count);
+  rhs:=MAKEMAT(0,rows,1);
+  objective:=MAKEMAT(0,count,1);
+  k:=0;
+  FOR j FROM 1 TO cols DO
+    k:=k+1;
+    FOR i FROM 1 TO rows DO
+      mat(i,k):=flips(i)*signs(k)*data(i,j);
+    END;
+    objective(k,1):=-sense*signs(k)*cost(j);
+    IF types(j)==0 THEN
+      k:=k+1;
+      FOR i FROM 1 TO rows DO
+        mat(i,k):=-flips(i)*data(i,j);
+      END;
+      objective(k,1):=sense*cost(j);
+    END;
+  END;
+  FOR i FROM 1 TO rows DO
+    rhs(i,1):=flips(i)*data(i,cols+1);
+    rel:=flips(i)*data(i,cols+2);
+    IF rel<>0 THEN
+      k:=k+1;
+      mat(i,k):=-rel;
+    END;
+    IF rel>=0 THEN
+      k:=k+1;
+      mat(i,k):=1;
+    END;
+  END;
+  RETURN {mat,rhs,objective,basis,arts,origin,signs,flips};
+END;
+
+PLBase(std,basis,cost)
+BEGIN
+  LOCAL mat,rhs,dims,rows,cols;
+  LOCAL bmat,inv,tab,xb;
+  LOCAL reduced,prices,basiccost,i,j,k,total;
+  mat:=std(1);
+  rhs:=std(2);
+  dims:=SIZE(mat);
+  rows:=dims(1);
+  cols:=dims(2);
+  bmat:=MAKEMAT(0,rows,rows);
+  FOR i FROM 1 TO rows DO
+    FOR j FROM 1 TO rows DO
+      bmat(i,j):=mat(i,basis(j));
+    END;
+  END;
+  inv:=bmat^(-1);
+  tab:=inv*mat;
+  xb:=inv*rhs;
+  reduced:=cost;
+  prices:=MAKEMAT(0,rows,1);
+  total:=0;
+  FOR k FROM 1 TO rows DO
+    basiccost:=cost(basis(k),1);
+    total:=total+basiccost*xb(k,1);
+    FOR j FROM 1 TO rows DO
+      prices(j,1):=prices(j,1)+basiccost*inv(k,j);
+    END;
+    FOR j FROM 1 TO cols DO
+      reduced(j,1):=reduced(j,1)-basiccost*tab(k,j);
+    END;
+  END;
+  RETURN {inv,tab,xb,reduced,prices,total};
+END;
+
+PLFase(std,basis,cost,phase)
+BEGIN
+  LOCAL mat,dims,rows,cols,metrics,tab,xb,reduced;
+  LOCAL trace:={},iter,enter,leave;
+  LOCAL ratio,best,i,j,allowed;
+  mat:=std(1);
+  dims:=SIZE(mat);
+  rows:=dims(1);
+  cols:=dims(2);
+  FOR iter FROM 0 TO 300 DO
+    metrics:=PLBase(std,basis,cost);
+    tab:=metrics(2);
+    xb:=metrics(3);
+    reduced:=metrics(4);
+    enter:=0;
+    leave:=0;
+    best:=1E99;
+    FOR i FROM 1 TO rows DO
+      IF xb(i,1)<-1E-7 THEN
+        RETURN {-5,basis,trace,metrics};
+      END;
+    END;
+    // Bland: first improving nonbasic column, then smallest basic index.
+    FOR j FROM 1 TO cols DO
+      allowed:=1;
+      IF phase==2 AND std(5,j)>0 THEN
+        allowed:=0;
+      END;
+      IF POS(basis,j)>0 THEN
+        allowed:=0;
+      END;
+      IF enter==0 AND allowed AND reduced(j,1)<-1E-9 THEN
+        enter:=j;
+      END;
+    END;
+    IF enter>0 THEN
+      FOR i FROM 1 TO rows DO
+        IF tab(i,enter)>1E-9 THEN
+          ratio:=MAX(0,xb(i,1))/tab(i,enter);
+          IF ratio<best-1E-9 THEN
+            best:=ratio;
+            leave:=i;
+          ELSE
+            IF ABS(ratio-best)<=1E-9 THEN
+              IF leave>0 THEN
+                IF basis(i)<basis(leave) THEN
+                  leave:=i;
+                END;
+              END;
+            END;
+          END;
+        END;
+      END;
+    END;
+    trace:=CONCAT(trace,{{phase,basis,enter,leave,best,metrics}});
+    IF enter==0 THEN
+      RETURN {1,basis,trace,metrics};
+    END;
+    IF leave==0 THEN
+      RETURN {-2,basis,trace,metrics};
+    END;
+    IF iter==300 THEN
+      RETURN {-3,basis,trace,metrics};
+    END;
+    basis(leave):=enter;
+  END;
+END;
+
+PLCertificar(data,cost,types,sense,x,y,value)
+BEGIN
+  LOCAL rows,cols,i,j;
+  LOCAL activity,scale,residual,error,dualvalue;
+  rows:=SIZE(y);
+  cols:=SIZE(cost);
+  dualvalue:=0;
+  error:=0;
+  FOR i FROM 1 TO rows DO
+    activity:=0;
+    scale:=1+ABS(data(i,cols+1));
+    FOR j FROM 1 TO cols DO
+      activity:=activity+data(i,j)*x(j);
+      scale:=scale+ABS(data(i,j)*x(j));
+    END;
+    residual:=activity-data(i,cols+1);
+    IF data(i,cols+2)==0 THEN
+      error:=MAX(error,ABS(residual)/scale);
+    ELSE
+      error:=MAX(error,-data(i,cols+2)*residual/scale);
+      error:=MAX(error,sense*data(i,cols+2)*y(i)/(1+ABS(y(i))));
+    END;
+    dualvalue:=dualvalue+data(i,cols+1)*y(i);
+  END;
+  FOR j FROM 1 TO cols DO
+    error:=MAX(error,-types(j)*x(j)/(1+ABS(x(j))));
+    activity:=-cost(j);
+    scale:=1+ABS(cost(j));
+    FOR i FROM 1 TO rows DO
+      activity:=activity+data(i,j)*y(i);
+      scale:=scale+ABS(data(i,j)*y(i));
+    END;
+    IF types(j)==0 THEN
+      error:=MAX(error,ABS(activity)/scale);
+    ELSE
+      error:=MAX(error,-sense*types(j)*activity/scale);
+    END;
+  END;
+  error:=MAX(error,ABS(value-dualvalue)/(1+ABS(value)+ABS(dualvalue)));
+  RETURN error<=1E-7;
+END;
+
+EXPORT PLSolve(
+    data,
+    cost,
+    types,
+    sense
+  )
+BEGIN
+  LOCAL error,std,mat,dims,rows,cols,phasecost,result;
+  LOCAL basis,trace,metrics,tab,xb;
+  LOCAL i,j,enter,origin,signs;
+  LOCAL solution,prices,value,artificial;
+  error:=PLValidar(data,cost,types,sense);
+  IF error<>"" THEN
+    RETURN {-4,error};
+  END;
+  std:=PLEstandar(data,cost,types,sense);
+  mat:=std(1);
+  dims:=SIZE(mat);
+  rows:=dims(1);
+  cols:=dims(2);
+  basis:=std(4);
+  phasecost:=MAKEMAT(0,cols,1);
+  FOR j FROM 1 TO cols DO
+    phasecost(j,1):=std(5,j);
+  END;
+  result:=PLFase(std,basis,phasecost,1);
+  trace:=result(3);
+  IF result(1)<>1 THEN
+    RETURN {result(1),std,result(2),trace,result(4)};
+  END;
+  metrics:=result(4);
+  IF metrics(6)>1E-7 THEN
+    RETURN {-1,std,result(2),trace,metrics};
+  END;
+  basis:=result(2);
+  // Zero artificial basics leave by a degenerate pivot where possible.
+  // A remaining artificial row is redundant and must stay exactly zero.
+  FOR i FROM 1 TO rows DO
+    IF std(5,basis(i))>0 THEN
+      metrics:=PLBase(std,basis,phasecost);
+      tab:=metrics(2);
+      enter:=0;
+      FOR j FROM 1 TO cols DO
+        IF std(5,j)==0 AND POS(basis,j)==0 THEN
+          IF ABS(tab(i,j))>1E-9 AND enter==0 THEN
+            enter:=j;
+          END;
+        END;
+      END;
+      IF enter>0 THEN
+        trace:=CONCAT(trace,{{3,basis,enter,i,0,metrics}});
+        basis(i):=enter;
+      END;
+    END;
+  END;
+  result:=PLFase(std,basis,std(3),2);
+  trace:=CONCAT(trace,result(3));
+  basis:=result(2);
+  metrics:=result(4);
+  IF result(1)<>1 THEN
+    RETURN {result(1),std,basis,trace,metrics};
+  END;
+  xb:=metrics(3);
+  origin:=std(6);
+  signs:=std(7);
+  solution:=MAKELIST(0,I,1,SIZE(cost));
+  prices:=MAKELIST(0,I,1,rows);
+  value:=0;
+  FOR i FROM 1 TO rows DO
+    j:=basis(i);
+    IF origin(j)>0 THEN
+      solution(origin(j)):=solution(origin(j))+signs(j)*xb(i,1);
+    END;
+    IF std(5,j)>0 AND ABS(xb(i,1))>1E-7 THEN
+      RETURN {-5,std,basis,trace,metrics};
+    END;
+    prices(i):=-sense*std(8,i)*metrics(5,i,1);
+  END;
+  FOR j FROM 1 TO SIZE(cost) DO
+    value:=value+cost(j)*solution(j);
+  END;
+  IF PLCertificar(data,cost,types,sense,solution,prices,value)==0 THEN
+    RETURN {-5,std,basis,trace,metrics};
+  END;
+  RETURN {1,std,basis,trace,metrics,solution,value,prices};
+END;
+
+PLInterval(value,slope,bounds)
+BEGIN
+  LOCAL lower,upper,limit;
+  lower:=bounds(1);
+  upper:=bounds(2);
+  IF ABS(slope)>1E-9 THEN
+    limit:=-value/slope;
+    IF slope>0 THEN
+      lower:=MAX(lower,limit);
+    ELSE
+      upper:=MIN(upper,limit);
+    END;
+  END;
+  RETURN {lower,upper};
+END;
+
+EXPORT PLRangoB(result,index)
+BEGIN
+  LOCAL std,basis,metrics,inv,xb;
+  LOCAL rows,i,slope,bounds;
+  IF result(1)<>1 THEN
+    RETURN {};
+  END;
+  std:=result(2);
+  basis:=result(3);
+  metrics:=result(5);
+  inv:=metrics(1);
+  xb:=metrics(3);
+  rows:=SIZE(basis);
+  IF index<1 OR index>rows OR index<>IP(index) THEN
+    RETURN {};
+  END;
+  bounds:={-1E99,1E99};
+  FOR i FROM 1 TO rows DO
+    slope:=inv(i,index)*std(8,index);
+    IF std(5,basis(i))>0 AND ABS(slope)>1E-9 THEN
+      bounds:={0,0};
+    ELSE
+      bounds:=PLInterval(xb(i,1),slope,bounds);
+    END;
+  END;
+  RETURN bounds;
+END;
+
+EXPORT PLRangoC(result,index,sense)
+BEGIN
+  LOCAL std,basis,metrics,tab,reduced,origin,signs;
+  LOCAL cols,rows,i,j,slope,bounds;
+  IF result(1)<>1 THEN
+    RETURN {};
+  END;
+  std:=result(2);
+  basis:=result(3);
+  metrics:=result(5);
+  tab:=metrics(2);
+  reduced:=metrics(4);
+  origin:=std(6);
+  signs:=std(7);
+  cols:=SIZE(origin);
+  rows:=SIZE(basis);
+  IF index<1 OR index>MAX(origin) OR index<>IP(index) THEN
+    RETURN {};
+  END;
+  IF sense<>1 AND sense<>-1 THEN
+    RETURN {};
+  END;
+  bounds:={-1E99,1E99};
+  FOR j FROM 1 TO cols DO
+    IF std(5,j)==0 AND POS(basis,j)==0 THEN
+      slope:=0;
+      IF origin(j)==index THEN
+        slope:=-sense*signs(j);
+      END;
+      FOR i FROM 1 TO rows DO
+        IF origin(basis(i))==index THEN
+          slope:=slope+sense*signs(basis(i))*tab(i,j);
+        END;
+      END;
+      bounds:=PLInterval(reduced(j,1),slope,bounds);
+    END;
+  END;
+  RETURN bounds;
+END;
+
+PLLimite(value)
+BEGIN
+  IF value<-1E98 THEN
+    RETURN "-infinito";
+  END;
+  IF value>1E98 THEN
+    RETURN "+infinito";
+  END;
+  RETURN PLFmt(value);
+END;
+
+PLVerMatriz(mat,title)
+BEGIN
+  LOCAL dims,i,j,line;
+  dims:=SIZE(mat);
+  PRINT(title);
+  FOR i FROM 1 TO dims(1) DO
+    line:="";
+    FOR j FROM 1 TO dims(2) DO
+      line:=line+PLFmt(mat(i,j))+"  ";
+    END;
+    PRINT(line);
+  END;
+END;
+
+PLVerPaso(result,index)
+BEGIN
+  LOCAL std,trace,step,basis,metrics,tab,xb,reduced;
+  LOCAL i,j,line,phase,enter,leave;
+  std:=result(2);
+  trace:=result(4);
+  step:=trace(index);
+  phase:=step(1);
+  basis:=step(2);
+  metrics:=step(6);
+  tab:=metrics(2);
+  xb:=metrics(3);
+  reduced:=metrics(4);
+  enter:=step(3);
+  leave:=step(4);
+  PRINT();
+  PRINT("PASO "+STRING(index)+" / "+STRING(SIZE(trace)));
+  IF phase==1 THEN
+    PRINT("FASE I: min suma de artificiales");
+  END;
+  IF phase==2 THEN
+    PRINT("FASE II: min (-sentido)*c*x");
+  END;
+  IF phase==3 THEN
+    PRINT("RETIRAR ARTIFICIAL de valor cero");
+  END;
+  line:="Base: ";
+  FOR i FROM 1 TO SIZE(basis) DO
+    line:=line+PLNombre(basis(i),std)+" ";
+  END;
+  PRINT(line);
+  PLVerMatriz(metrics(1),"1) B^(-1):");
+  PLVerMatriz(tab,"2) B^(-1)*A:");
+  PLVerMatriz(xb,"3) xB=B^(-1)*b:");
+  PLVerMatriz(metrics(5),"4) pi=B^(-T)*cB (objetivo interno):");
+  PRINT("5) r=c-A^T*pi; minimo: r>=0");
+  FOR j FROM 1 TO SIZE(std(6)) DO
+    IF std(5,j)==0 OR phase<>2 THEN
+      PRINT(PLNombre(j,std)+": "+PLFmt(reduced(j,1)));
+    END;
+  END;
+  PRINT("Objetivo interno: "+PLFmt(metrics(6)));
+  IF enter==0 THEN
+    PRINT("No hay coste reducido negativo.");
+  ELSE
+    PRINT("6) Entra "+PLNombre(enter,std)+" (Bland)");
+    PRINT("Direccion: d_entra=1; dB=-B^(-1)*A_entra");
+    FOR i FROM 1 TO SIZE(basis) DO
+      line:=PLNombre(basis(i),std)+": d="+PLFmt(-tab(i,enter));
+      IF tab(i,enter)>1E-9 THEN
+        line:=line+"; cociente="+PLFmt(MAX(0,xb(i,1))/tab(i,enter));
+      ELSE
+        line:=line+"; no limita";
+      END;
+      PRINT(line);
+    END;
+    IF leave>0 THEN
+      PRINT("7) Sale "+PLNombre(basis(leave),std));
+      PRINT("theta="+PLFmt(step(5))+"; pivote="+PLFmt(tab(leave,enter)));
+      PRINT("Fila pivote / pivote; anular resto de columna.");
+    ELSE
+      PRINT("Sin cociente: direccion de mejora ilimitada.");
+    END;
+  END;
+  PRINT("Otro paso: OPTILIN > 5. Desliza: recorrer.");
+END;
+
+PLVerDual(data,cost,types,sense)
+BEGIN
+  LOCAL dims,rows,cols,i,j,line,relation,sign;
+  dims:=SIZE(data);
+  rows:=dims(1);
+  cols:=SIZE(cost);
+  PRINT();
+  IF sense==1 THEN
+    PRINT("DUAL: MIN b^T*y");
+  ELSE
+    PRINT("DUAL: MAX b^T*y");
+  END;
+  line:="Objetivo: ";
+  FOR i FROM 1 TO rows DO
+    line:=line+"("+PLFmt(data(i,cols+1))+")y"+STRING(i);
+    IF i<rows THEN
+      line:=line+" + ";
+    END;
+  END;
+  PRINT(line);
+  FOR j FROM 1 TO cols DO
+    line:="";
+    FOR i FROM 1 TO rows DO
+      line:=line+"("+PLFmt(data(i,j))+")y"+STRING(i);
+      IF i<rows THEN
+        line:=line+" + ";
+      END;
+    END;
+    relation:=" = ";
+    IF sense*types(j)==1 THEN
+      relation:=" >= ";
+    END;
+    IF sense*types(j)==-1 THEN
+      relation:=" <= ";
+    END;
+    PRINT(line+relation+PLFmt(cost(j)));
+  END;
+  FOR i FROM 1 TO rows DO
+    sign:=-sense*data(i,cols+2);
+    line:="y"+STRING(i)+" libre";
+    IF sign==1 THEN
+      line:="y"+STRING(i)+" >= 0";
+    END;
+    IF sign==-1 THEN
+      line:="y"+STRING(i)+" <= 0";
+    END;
+    PRINT(line);
+  END;
+  PRINT("Desliza o flechas: recorrer. Esc: salir.");
+END;
+
+PLVerResultado(result,data,cost,sense)
+BEGIN
+  LOCAL i,j,rows,cols,x,y;
+  LOCAL activity,slack,dualvalue,gap;
+  LOCAL dualactivity,bounds;
+  PRINT();
+  IF result(1)==-1 THEN
+    PRINT("INFACTIBLE: minimo de fase I positivo.");
+    PRINT("Suma artificiales="+PLFmt(result(5,6)));
+  END;
+  IF result(1)==-2 THEN
+    PRINT("ILIMITADO: ver direccion en ultimo paso.");
+  END;
+  IF result(1)==-3 THEN
+    PRINT("LIMITE de 300 pivotes por fase. No se certifica optimo.");
+  END;
+  IF result(1)==-5 THEN
+    PRINT("ERROR NUMERICO: no se certifica resultado.");
+  END;
+  IF result(1)==1 THEN
+    x:=result(6);
+    y:=result(8);
+    rows:=SIZE(y);
+    cols:=SIZE(cost);
+    PRINT("OPTIMO DEL PROBLEMA ORIGINAL");
+    FOR j FROM 1 TO cols DO
+      PRINT("x"+STRING(j)+"="+PLFmt(x(j)));
+    END;
+    PRINT("z="+PLFmt(result(7)));
+    dualvalue:=0;
+    PRINT("RESTRICCIONES Y PRECIOS SOMBRA");
+    FOR i FROM 1 TO rows DO
+      activity:=0;
+      FOR j FROM 1 TO cols DO
+        activity:=activity+data(i,j)*x(j);
+      END;
+      slack:=data(i,cols+1)-activity;
+      IF data(i,cols+2)==1 THEN
+        slack:=-slack;
+      END;
+      dualvalue:=dualvalue+data(i,cols+1)*y(i);
+      PRINT("Fila "+STRING(i)+": holgura/residuo="+PLFmt(slack));
+      PRINT("y"+STRING(i)+"="+PLFmt(y(i)));
+      PRINT("Complementariedad y*holgura="+PLFmt(y(i)*slack));
+      bounds:=PLRangoB(result,i);
+      PRINT("Delta b: ["+PLLimite(bounds(1))+", "+PLLimite(bounds(2))+"]");
+    END;
+    PRINT("COSTES Y COMPLEMENTARIEDAD");
+    FOR j FROM 1 TO cols DO
+      dualactivity:=0;
+      FOR i FROM 1 TO rows DO
+        dualactivity:=dualactivity+data(i,j)*y(i);
+      END;
+      PRINT("(A^T*y-c)"+STRING(j)+"="+PLFmt(dualactivity-cost(j)));
+      PRINT("x*(A^T*y-c)="+PLFmt(x(j)*(dualactivity-cost(j))));
+      bounds:=PLRangoC(result,j,sense);
+      PRINT("Delta c"+STRING(j)+": ["+PLLimite(bounds(1))+", "+PLLimite(bounds(2))+"]");
+    END;
+    PRINT("Valor dual="+PLFmt(dualvalue));
+    gap:=result(7)-dualvalue;
+    PRINT("Brecha primal-dual="+PLFmt(gap));
+    PRINT("Sensibilidad: cambiar SOLO un dato cada vez.");
+    PRINT("z nuevo=z+y_i*Delta b_i dentro del intervalo.");
+    PRINT("Intervalos para esta base; pueden existir otras.");
+    PRINT("En extremos/degeneracion, comprobar el lado del cambio.");
+    PRINT("Calculo numerico; fracciones son representacion.");
+  END;
+  PRINT("Desliza o flechas: recorrer. Esc: salir.");
+END;
+
+PLVerEstandar(result)
+BEGIN
+  LOCAL std,j;
+  std:=result(2);
+  PRINT();
+  PRINT("FORMA ESTANDAR: A*u=b, u>=0");
+  PRINT("Objetivo interno: min (-sentido)*c*x");
+  PRINT("Variables libres: x=x+ - x-. No positivas: x=-x-.");
+  PRINT("Filas con b<0: multiplicar por -1 e invertir relacion.");
+  FOR j FROM 1 TO SIZE(std(6)) DO
+    PRINT("Columna "+STRING(j)+": "+PLNombre(j,std));
+  END;
+  PLVerMatriz(std(1),"A (incluye artificiales):");
+  PLVerMatriz(std(2),"b:");
+  PLVerMatriz(std(3),"c interno (fase II):");
+  PRINT("Artificiales: solo fase I; nunca entran en fase II.");
+  PRINT("Desliza o flechas: recorrer. Esc: salir.");
+END;
+
+PLDatosEditar()
+BEGIN
+  LOCAL option,rows,cols,i;
+  option:=1;
+  CHOOSE(option,"DATOS","Editar modelo actual","Crear modelo nuevo","Cancelar");
+  IF option==0 OR option==3 THEN
+    RETURN 0;
+  END;
+  IF option==2 THEN
+    rows:=2;
+    cols:=2;
+    IF INPUT({rows,cols},"Dimensiones",{"Restricciones","Variables"})==0 THEN
+      RETURN 0;
+    END;
+    IF rows<1 OR cols<1 OR rows<>IP(rows) OR cols<>IP(cols) THEN
+      MSGBOX("Dimensiones enteras positivas.");
+      RETURN 0;
+    END;
+    PLDatos:=MAKEMAT(0,rows,cols+2);
+    PLCoste:=MAKELIST(0,I,1,cols);
+    PLTipo:=MAKELIST(1,I,1,cols);
+    FOR i FROM 1 TO rows DO
+      PLDatos(i,cols+2):=-1;
+    END;
+  END;
+  MSGBOX("Matriz: coeficientes | b | relacion. Ultima columna: -1 <=, 0 =, 1 >=.");
+  EDITMAT(PLDatos);
+  MSGBOX("Lista de coeficientes del objetivo c.");
+  EDITLIST(PLCoste);
+  MSGBOX("Signos de variables: 1 >=0, 0 libre, -1 <=0.");
+  EDITLIST(PLTipo);
+  INPUT(PLSentido,"Objetivo","1 MAX, -1 MIN");
+  PLRes:={};
+  RETURN 1;
+END;
+
+EXPORT OPTILIN()
+BEGIN
+  LOCAL option,error,count,view;
+  option:=1;
+  REPEAT
+    CHOOSE(
+        option,
+        "OPTILIN - PL paso a paso",
+        "1. Datos del problema",
+        "2. Ver dual original",
+        "3. Resolver / recalcular",
+        "4. Forma estandar",
+        "5. Pasos del simplex",
+        "6. Solucion y sensibilidad",
+        "7. Salir"
+      );
+    IF option==1 THEN
+      PLDatosEditar();
+    END;
+    IF option>=2 AND option<=6 THEN
+      error:=PLValidar(PLDatos,PLCoste,PLTipo,PLSentido);
+      IF error<>"" THEN
+        MSGBOX(error);
+      ELSE
+        IF option==2 THEN
+          PLVerDual(PLDatos,PLCoste,PLTipo,PLSentido);
+          RETURN "";
+        END;
+        IF option==3 OR SIZE(PLRes)==0 THEN
+          IFERR
+            PLRes:=PLSolve(PLDatos,PLCoste,PLTipo,PLSentido);
+          THEN
+            PLRes:={};
+            MSGBOX("Error numerico o de datos. No se certifica optimo.");
+          END;
+          PLPaso:=0;
+        END;
+        IF SIZE(PLRes)>0 THEN
+          // Cada vista termina el programa: el Terminal queda en pantalla.
+          IF option==3 OR option==6 THEN
+            PLVerResultado(PLRes,PLDatos,PLCoste,PLSentido);
+            RETURN "";
+          END;
+          IF option==4 THEN
+            PLVerEstandar(PLRes);
+            RETURN "";
+          END;
+          IF option==5 THEN
+            count:=SIZE(PLRes(4));
+            PLPaso:=MAX(0,MIN(count,PLPaso));
+            view:=2;
+            CHOOSE(
+                view,
+                "Pasos del simplex: "+STRING(count),
+                "Primer paso",
+                "Siguiente (paso "+STRING(MIN(count,PLPaso+1))+")",
+                "Anterior (paso "+STRING(MAX(1,PLPaso-1))+")",
+                "Ir al paso..."
+              );
+            IF view>0 THEN
+              IF view==1 THEN
+                PLPaso:=1;
+              END;
+              IF view==2 THEN
+                PLPaso:=MIN(count,PLPaso+1);
+              END;
+              IF view==3 THEN
+                PLPaso:=MAX(1,PLPaso-1);
+              END;
+              IF view==4 THEN
+                count:=SIZE(PLRes(4));
+                view:=MAX(1,PLPaso);
+                INPUT(view,"Paso","Numero de paso");
+                PLPaso:=MAX(1,MIN(count,IP(view)));
+              END;
+              PLVerPaso(PLRes,PLPaso);
+              RETURN "";
+            END;
+          END;
+        END;
+      END;
+    END;
+  UNTIL option==0 OR option==7;
+  RETURN "";
+END;

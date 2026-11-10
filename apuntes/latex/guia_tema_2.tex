@@ -1,0 +1,170 @@
+\documentclass[a4paper,landscape]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish,es-nodecimaldot]{babel}
+\usepackage{lmodern,microtype,amsmath,amssymb}
+\usepackage{xcolor,geometry,ragged2e,fancyhdr}
+\geometry{left=9mm,right=9mm,top=8mm,bottom=10mm}
+\definecolor{ink}{HTML}{163442}
+\definecolor{accent}{HTML}{176E72}
+\definecolor{pale}{HTML}{E8F1F1}
+\renewcommand{\familydefault}{\sfdefault}
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0pt}
+\fancyfoot[L]{\fontsize{7.5}{9}\selectfont Tema 2: reconocer el ejercicio, calcular y justificar. Sin demostraciones.}
+\fancyfoot[R]{\fontsize{7.5}{9}\selectfont\thepage/2}
+\setlength{\footskip}{5mm}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{2pt}
+\setlength{\abovedisplayskip}{3pt}
+\setlength{\belowdisplayskip}{3pt}
+\setlength{\emergencystretch}{2em}
+\newcommand{\R}{\mathbb R}
+\newcommand{\T}{^{\mathsf T}}
+\newcommand{\caso}[2]{\par\vspace{5pt}\colorbox{pale}{\parbox{\dimexpr\linewidth-2\fboxsep}{\bfseries\color{accent}#1}}\par\textit{#2}\par}
+\newcommand{\paso}[2]{\par\hangindent=1.3em\hangafter=1\makebox[1.3em][l]{\textbf{\color{accent}#1}}#2}
+\newcommand{\escribe}[1]{\par\textbf{Escribe:} #1}
+\newcommand{\ojo}[1]{\par\textbf{Comprueba:} #1}
+\newcommand{\cabecera}[2]{%
+  {\fontsize{17}{19}\selectfont\bfseries\color{ink}Guíaburros de examen: Tema 2}\hfill\textbf{\color{accent}#1}\par
+  {\color{ink}#2}\par\vspace{2pt}\hrule\vspace{3mm}}
+\newcommand{\columna}[1]{\begin{minipage}[t]{0.319\textwidth}\fontsize{9.2}{10.6}\selectfont\RaggedRight #1\end{minipage}}
+\begin{document}
+\cabecera{CARA A}{Conjuntos convexos, envolturas, proyección y planos. Procedimientos para las situaciones de los ejercicios.}
+\noindent
+\columna{
+\caso{1. ¿Es convexo un conjunto?}{Una figura, desigualdades o una definición de \(F\).}
+\paso{1.}{Identifica el dominio y las restricciones. Una intersección de semiespacios es convexa. También lo es una intersección de subniveles \(g_i(x)\le0\) de funciones convexas, sobre un dominio convexo.}
+\paso{2.}{Si esas reglas no bastan, toma \(u,v\in F\), \(\lambda\in[0,1]\) y comprueba las restricciones para \(w=\lambda u+(1-\lambda)v\).}
+\paso{3.}{Para refutar: encuentra \(u,v\in F\) y un \(\lambda\in(0,1)\) con \(w\notin F\). El punto medio suele simplificar.}
+\escribe{la propiedad que lo garantiza o los dos puntos y el cálculo que falla. Un dibujo por sí solo no es la justificación.}
+
+\caso{2. Puntos y direcciones extremos}{Te dan una figura convexa o un poliedro.}
+\paso{1.}{Un punto extremo no puede escribirse como combinación estricta de dos puntos distintos de \(F\). Los vértices de un polígono convexo lo son; el interior de un lado no. Una frontera estrictamente curva puede aportar infinitos.}
+\paso{2.}{En \(P=\{Ax\le b\}\subset\R^n\), un punto factible es extremo si las filas activas tienen rango \(n\). Resuelve sus igualdades y comprueba las demás restricciones.}
+\paso{3.}{Direcciones de recesión: \(Ad\le0\). Añade las condiciones homogéneas de las igualdades y los signos de las variables. Exige \(d\ne0\).}
+\paso{4.}{En un cono de recesión sin rectas, sus rayos generadores extremos dan las direcciones extremas. Elimina múltiplos positivos; \(-d\) no es el mismo rayo.}
+\ojo{un conjunto no acotado puede contener rectas y no tener vértices. Para el cálculo matricial usa la cara B.}
+
+\caso{3. Obtener los semiespacios}{Dos puntos \(P,Q\) de cada lado y un punto interior \(I\).}
+\paso{1.}{Normal \(a=(Q_y-P_y,\,-(Q_x-P_x))\); constante \(b=a\T P\). Frontera: \(a\T x=b\).}
+\paso{2.}{Sustituye \(I\): conserva \(\le\) o \(\ge\) según corresponda. Hazlo para cada lado.}
+\escribe{la intersección de todos los semiespacios. Comprueba vértices y sentido de los rayos.}
+}
+\hfill
+\columna{
+\caso{4. ¿Pertenece \(x\) a \(\operatorname{conv}(A)\)?}{Puntos \(a_1,\ldots,a_k\) y un punto objetivo.}
+\paso{1.}{Resuelve el sistema de pesos:
+\[\sum_i\lambda_i a_i=x,\qquad\sum_i\lambda_i=1,\qquad\lambda_i\ge0.\]}
+\paso{2.}{Si los pesos vienen dados, verifica \emph{las tres} condiciones, incluida la igualdad con \(x\).}
+\paso{3.}{En \(\R^n\) basta buscar subconjuntos de hasta \(n+1\) puntos. Si quedan parámetros libres, estudia si pueden cumplir \(\lambda\ge0\).}
+\paso{4.}{Para decir que no: demuestra que el sistema es infactible, o encuentra \(a\T a_i\le b\) para todos los puntos y \(a\T x>b\).}
+\escribe{una combinación válida o una desigualdad que separe el punto de toda la envoltura.}
+
+\caso{5. Reducir una combinación convexa}{Más de \(n+1\) pesos positivos: procedimiento constructivo.}
+\paso{1.}{Descarta pesos cero. Busca un vector no nulo \(\mu\) tal que
+\[\sum_i\mu_i a_i=0,\qquad\sum_i\mu_i=0.\]
+Es el núcleo de la matriz con columnas \((a_i;1)\).}
+\paso{2.}{Debe haber componentes positivas y negativas. Calcula
+\[\alpha=\min_{\mu_i>0}\frac{\lambda_i}{\mu_i}.\]}
+\paso{3.}{Actualiza \(\lambda_i'=\lambda_i-\alpha\mu_i\). Los pesos siguen siendo no negativos, suman uno y representan el mismo punto. Al menos uno se anula.}
+\paso{4.}{Elimina los pesos cero y repite hasta tener a lo sumo \(n+1\) puntos.}
+\escribe{\(\mu\), los cocientes, \(\alpha\), los nuevos pesos y la combinación final.}
+
+\caso{6. Extremos de una envoltura finita}{Te piden los puntos extremos de \(\operatorname{conv}(A)\).}
+\paso{1.}{Quita duplicados. Para cada \(a_i\), comprueba si pertenece a \(\operatorname{conv}(A\setminus\{a_i\})\).}
+\paso{2.}{Si pertenece, no es extremo. Si no pertenece, sí es extremo. En 2D ayuda ordenar la frontera y quitar puntos interiores o colineales intermedios.}
+\escribe{los puntos extremos y una combinación que descarte cada punto dudoso.}
+}
+\hfill
+\columna{
+\caso{7. Proyección de \(x_0\) sobre \(F\)}{Distancia mínima; \(F\) no vacío, cerrado y convexo.}
+\paso{1.}{Sustituye \(x_0\) en todas las restricciones. Si es factible, su proyección es \(x_0\) y la distancia es cero.}
+\paso{2.}{Si está fuera, minimiza \(\tfrac12\|x-x_0\|^2\) en \(F\). La proyección está en la frontera. Busca candidatos por tramos y en las esquinas.}
+\paso{3.}{Sobre una recta \(a\T x=b\):
+\[p=x_0-\frac{a\T x_0-b}{\|a\|^2}a.\]
+Conserva el candidato solo si cumple \emph{todas} las restricciones. Si cae fuera de un segmento, incluye sus extremos.}
+\paso{4.}{Sobre una curva regular \(g(x)=0\): resuelve \(x_0-p=\lambda\nabla g(p)\), \(g(p)=0\). Incluye intersecciones y puntos singulares por separado.}
+\paso{5.}{Compara las distancias de todos los candidatos factibles. Para certificar \(p\):
+\[(x_0-p)\T(x-p)\le0\quad\forall x\in F.\]}
+\escribe{candidatos, factibilidad, distancias, proyección y comprobación final.}
+
+\caso{8. Separador usando la proyección}{Ya tienes \(p=\operatorname{proy}_F(x_0)\), \(x_0\notin F\).}
+\paso{1.}{Toma \(n=x_0-p\ne0\), \(b=n\T p\). El plano \(n\T x=b\) deja \(F\) en \(n\T x\le b\) y \(n\T x_0>b\).}
+\paso{2.}{Si piden separación estricta a ambos lados, usa \(n\T x=(b+n\T x_0)/2\).}
+\ojo{comprobar un punto de \(F\) solo fija la orientación: no prueba la desigualdad para todo \(F\). Usa la condición de proyección.}
+
+\caso{9. Plano soporte en \(p\)}{\(F=\{g_i\le0\}\), funciones convexas diferenciables.}
+\paso{1.}{Comprueba \(p\in F\) y localiza las restricciones activas \(g_i(p)=0\).}
+\paso{2.}{Elige una activa con \(n=\nabla g_i(p)\ne0\). Entonces \(n\T x=n\T p\) soporta \(F\). También vale una combinación no negativa de normales activas si no se anula.}
+\escribe{normal, ecuación, \(p\) en el plano y la justificación de \(F\subset\{n\T x\le n\T p\}\).}
+}
+
+\newpage
+\cabecera{CARA B}{Forma estándar, bases, direcciones, representación, funciones convexas y decisiones de optimalidad.}
+\noindent
+\columna{
+\caso{10. Pasar a forma estándar}{Quieres \(Au=b,\ u\ge0\). Conserva una tabla de cambios.}
+\paso{1.}{Variable no negativa: se queda. No positiva: \(x_j=-u_j\). Libre: \(x_j=u_j^+-u_j^-\), con las nuevas variables no negativas.}
+\paso{2.}{Sustituye en todas las restricciones y en el objetivo, si existe.}
+\paso{3.}{Fila \(\le\): añade \(+s_i\). Fila \(\ge\): añade \(-s_i\). Fila \(=\): no necesita holgura. Todas las holguras son no negativas.}
+\paso{4.}{Escribe las columnas de \(A\) en el mismo orden que \(u\). No es obligatorio hacer \(b\ge0\) para estudiar bases; sí conviene normalizarlo para iniciar las dos fases del símplex.}
+\escribe{sistema, signos, orden de variables, matriz \(A\), vector \(b\) y correspondencia con \(x\).}
+
+\caso{11. Enumerar bases y puntos extremos}{\(P=\{Au=b,u\ge0\}\), \(A\) de rango fila \(m\).}
+\paso{1.}{Elige \(m\) columnas de \(A\) y forma \(B\). Quedan las columnas no básicas \(D\).}
+\paso{2.}{Si \(\det B=0\), descarta la elección. Si no:
+\[u_B=B^{-1}b,\qquad u_D=0.\]}
+\paso{3.}{Si \(u_B\ge0\), la solución es básica factible y es un punto extremo de \(P\). Si hay una componente negativa, no es factible.}
+\paso{4.}{Si alguna básica vale cero, la base es degenerada. Distintas bases pueden representar el mismo punto: elimina duplicados.}
+\paso{5.}{Recupera las variables originales. Si desdoblaste variables libres, verifica además que el punto recuperado sea extremo del conjunto original: la transformación no es inyectiva.}
+\escribe{índices de columnas, \(B\), \(B^{-1}b\), factibilidad, degeneración y punto original.}
+\ojo{si el rango fila es menor que el número de ecuaciones, elimina las dependencias compatibles; una igualdad incompatible hace vacío el conjunto.}
+}
+\hfill
+\columna{
+\caso{12. Direcciones extremas por matrices}{Para \(P=\{Au=b,u\ge0\}\), no vacío y de rango fila completo.}
+\paso{1.}{Para cada base factible y cada columna no básica \(a_j\), calcula \(q=B^{-1}a_j\).}
+\paso{2.}{Si \(q\le0\), construye la dirección
+\[d_B=-q,\qquad d_j=1,\qquad d_k=0\ (k\in D,\ k\ne j).\]}
+\paso{3.}{Comprueba \(Ad=0\), \(d\ge0\), \(d\ne0\). Al recorrer las bases factibles obtienes los rayos extremos; elimina los proporcionales positivos.}
+\paso{4.}{Si interesan las variables originales, aplica a \(d\) los mismos cambios de variables. Descarta imágenes nulas y vuelve a comprobar extremalidad si la transformación no es inyectiva.}
+\escribe{\(B\), \(a_j\), \(B^{-1}a_j\), dirección completa y dirección original.}
+
+\caso{13. Representar un punto de un poliedro}{Tienes puntos extremos \(v_i\) y direcciones extremas \(d_j\).}
+\paso{1.}{En un poliedro no vacío sin rectas, plantea:
+\[x=\sum_i\lambda_i v_i+\sum_j\mu_j d_j,\]
+\[\lambda_i\ge0,\quad\sum_i\lambda_i=1,\quad\mu_j\ge0.\]}
+\paso{2.}{Resuelve una ecuación por coordenada y la suma de \(\lambda\). Empieza por pocos términos; si quedan parámetros, impón las desigualdades.}
+\paso{3.}{Sustituye los pesos en la combinación y comprueba el punto. Si el poliedro es acotado, no hacen falta direcciones.}
+\ojo{si contiene rectas, esta fórmula necesita incorporar la parte lineal; no supongas que siempre hay vértices.}
+
+\caso{14. ¿La región permite mejora ilimitada?}{Objetivo lineal \(c\T x\), punto factible \(x_0\).}
+\paso{1.}{Busca una dirección de recesión \(d\) no nula y comprueba que \(x_0+td\) es factible para todo \(t\ge0\).}
+\paso{2.}{Estudia \(c\T(x_0+td)=c\T x_0+t\,c\T d\). Máximo: ilimitado si \(c\T d>0\). Mínimo: si \(c\T d<0\).}
+\ojo{región no acotada no implica objetivo ilimitado. Si \(c\T d=0\), el valor no cambia en ese rayo.}
+}
+\hfill
+\columna{
+\caso{15. Convexidad o concavidad de \(f\)}{Función dos veces diferenciable en un dominio abierto y convexo.}
+\paso{1.}{Determina el dominio: logaritmos \(>0\), denominadores \(\ne0\), raíces pares \(\ge0\). Comprueba si es convexo; si no, estudia por separado regiones convexas.}
+\paso{2.}{Calcula la Hessiana \(Hf(x)\) y estudia su signo en \emph{todo} el dominio de estudio.}
+\paso{3.}{Definida positiva: convexidad estricta. Definida negativa: concavidad estricta. Indefinida en algún punto interior: ni convexa ni cóncava en una región abierta que lo contenga.}
+\paso{4.}{Semidefinida positiva en todo el dominio: convexa. Semidefinida negativa: cóncava. Estas condiciones no deciden por sí solas la estricta.}
+\paso{5.}{Para una matriz simétrica: menores \emph{líderes} todos positivos certifican definida positiva; signos \(-,+,-,\ldots\), definida negativa. Si aparecen ceros, los líderes no bastan. Para semidefinitud positiva, todos los menores \emph{principales} deben ser \(\ge0\); para negativa, \((-1)^k\det H_{SS}\ge0\), \(k=|S|\).}
+\ojo{una Hessiana singular no descarta convexidad estricta: \(x^4\) es un ejemplo. No confundas principales con líderes.}
+
+\caso{16. Optimizar sobre un poliedro}{Distingue el sentido del objetivo y su curvatura.}
+\paso{1.}{Poliedro no vacío y acotado, \(f\) continua: para maximizar una convexa o minimizar una cóncava basta comparar sus valores en todos los vértices.}
+\paso{2.}{Para minimizar una convexa diferenciable sobre \(F\) convexo, certifica:
+\[\nabla f(x^*)\T(x-x^*)\ge0\quad\forall x\in F.\]
+En un politopo basta comprobar la desigualdad en sus vértices. Máximo de cóncava: invierte el signo.}
+\paso{3.}{Si \(\nabla f(x^*)=0\) y \(x^*\) es factible, el mínimo de convexa es global. En una frontera puede haber óptimo con gradiente no nulo.}
+\escribe{factibilidad, curvatura, comparación o certificado y conclusión de optimalidad.}
+
+\caso{17. Verdadero o falso}{Una afirmación teórica sobre conjuntos o funciones.}
+\paso{1.}{Escribe las hipótesis y la conclusión exactas. Si encaja en un resultado conocido, cita por qué se cumplen sus hipótesis.}
+\paso{2.}{Que no puedas aplicar un resultado \emph{no demuestra falsedad}. Para refutar necesitas un contraejemplo que cumpla las hipótesis del enunciado y falle en la conclusión.}
+}
+\end{document}

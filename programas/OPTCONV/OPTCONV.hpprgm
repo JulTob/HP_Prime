@@ -1,0 +1,1912 @@
+// OPTCONV 1.0 - Temas 1 y 2 (PL grafica, analisis convexo). HP PPL.
+// Datos PL como OPTILIN: filas [a1,...,an, b, rel], rel: -1 <=, 0 =, 1 >=.
+// Signos variables: 1 >=0, 0 libre, -1 <=0. Sentido: 1 max, -1 min.
+// Programas CAS al final: CVHESS, CVOPT2, CVPROY, CVSOP (usar en vista CAS).
+
+EXPORT CVDatos:=[[0.4,0.5,20,-1],[0.1,0.25,5,-1],[0.6,0.3,24,-1]];
+EXPORT CVCoste:={40,30};
+EXPORT CVTipo:={1,1};
+EXPORT CVSentido:=1;
+EXPORT CVPuntos:=[[-1,2],[1,1],[1,-1],[3,-1],[2,2]];
+EXPORT CVLambda:={0.2,0.2,0.2,0.2,0.2};
+EXPORT CVDirs:=[[0,0]];
+EXPORT CVX:={4,4};
+EXPORT CVExt:={};
+EXPORT CVDirExt:={};
+
+// ---------- Formato ----------
+
+CVF(v)
+BEGIN
+  LOCAL r,t,a,p0,q0,p1,q1,p;
+  LOCAL q,k,sg;
+  IF ABS(v)<1E-9 THEN
+    RETURN "0";
+  END;
+  IF v>1E98 THEN
+    RETURN "+inf";
+  END;
+  IF v<-1E98 THEN
+    RETURN "-inf";
+  END;
+  sg:="";
+  IF v<0 THEN
+    sg:="-";
+  END;
+  r:=ABS(v);
+  t:=r;
+  p0:=0; q0:=1; p1:=1; q1:=0;
+  FOR k FROM 1 TO 25 DO
+    a:=FLOOR(t);
+    p:=a*p1+p0;
+    q:=a*q1+q0;
+    p0:=p1; q0:=q1; p1:=p; q1:=q;
+    IF q1>5000 THEN
+      BREAK;
+    END;
+    IF ABS(r-p1/q1)<=1E-9*MAX(1,r) THEN
+      IF q1==1 THEN
+        RETURN sg+STRING(p1);
+      END;
+      RETURN sg+STRING(p1)+"/"+STRING(q1);
+    END;
+    IF t-a<1E-12 THEN
+      BREAK;
+    END;
+    t:=1/(t-a);
+  END;
+  RETURN STRING(ROUND(v,6));
+END;
+
+CVFV(lst)
+BEGIN
+  LOCAL k,txt;
+  txt:="(";
+  FOR k FROM 1 TO SIZE(lst) DO
+    txt:=txt+CVF(lst(k));
+    IF k<SIZE(lst) THEN
+      txt:=txt+", ";
+    END;
+  END;
+  RETURN txt+")";
+END;
+
+// Direccion escalada: menor componente no nula en valor absoluto = 1.
+CVDirEsc(lst)
+BEGIN
+  LOCAL k,mn,out;
+  mn:=1E99;
+  FOR k FROM 1 TO SIZE(lst) DO
+    IF ABS(lst(k))>1E-9 THEN
+      mn:=MIN(mn,ABS(lst(k)));
+    END;
+  END;
+  IF mn>1E98 THEN
+    RETURN lst;
+  END;
+  out:={};
+  FOR k FROM 1 TO SIZE(lst) DO
+    out(k):=lst(k)/mn;
+  END;
+  RETURN out;
+END;
+
+CVDirTxt(lst)
+BEGIN
+  RETURN CVFV(CVDirEsc(lst));
+END;
+
+// Texto de c1*n1 + c2*n2 + ... con signos limpios.
+CVLin(cf,nm)
+BEGIN
+  LOCAL j,txt,vv,cs;
+  txt:="";
+  FOR j FROM 1 TO SIZE(cf) DO
+    vv:=cf(j);
+    IF ABS(vv)>1E-12 THEN
+      IF txt=="" THEN
+        IF vv<0 THEN
+          txt:="-";
+        END;
+      ELSE
+        IF vv<0 THEN
+          txt:=txt+" - ";
+        ELSE
+          txt:=txt+" + ";
+        END;
+      END;
+      IF ABS(ABS(vv)-1)>1E-12 THEN
+        cs:=CVF(ABS(vv));
+        IF INSTRING(cs,"/")>0 THEN
+          cs:="("+cs+")";
+        END;
+        txt:=txt+cs;
+      END;
+      txt:=txt+nm(j);
+    END;
+  END;
+  IF txt=="" THEN
+    txt:="0";
+  END;
+  RETURN txt;
+END;
+
+CVFila(mat,ir)
+BEGIN
+  LOCAL d,k,out;
+  d:=SIZE(mat);
+  out:={};
+  FOR k FROM 1 TO d(2) DO
+    out(k):=mat(ir,k);
+  END;
+  RETURN out;
+END;
+
+// Siguiente combinacion de SIZE(cb) indices entre 1..n; {} si no hay mas.
+CVSigComb(cb,n)
+BEGIN
+  LOCAL k,m,j;
+  m:=SIZE(cb);
+  k:=m;
+  WHILE k>=1 DO
+    IF cb(k)<n-m+k THEN
+      BREAK;
+    END;
+    k:=k-1;
+  END;
+  IF k<1 THEN
+    RETURN {};
+  END;
+  cb(k):=cb(k)+1;
+  FOR j FROM k+1 TO m DO
+    cb(j):=cb(j-1)+1;
+  END;
+  RETURN cb;
+END;
+
+CVPrimera(m)
+BEGIN
+  LOCAL k,cb;
+  cb:={};
+  FOR k FROM 1 TO m DO
+    cb(k):=k;
+  END;
+  RETURN cb;
+END;
+
+// ---------- PL en 2 variables ----------
+
+CVValida2D()
+BEGIN
+  LOCAL d;
+  IF TYPE(CVDatos)<>4 THEN
+    RETURN "CVDatos debe ser matriz.";
+  END;
+  d:=SIZE(CVDatos);
+  IF d(2)<>4 THEN
+    RETURN "PL 2D: CVDatos con 4 columnas [a1,a2,b,rel].";
+  END;
+  IF SIZE(CVCoste)<>2 OR SIZE(CVTipo)<>2 THEN
+    RETURN "PL 2D: CVCoste y CVTipo con 2 elementos.";
+  END;
+  RETURN "";
+END;
+
+// Restricciones en forma a1*x1+a2*x2<=b. Columnas: a1,a2,b,esIgualdad,filaOriginal.
+CVFilas()
+BEGIN
+  LOCAL d,m,i,j,k,r,lab,s;
+  d:=SIZE(CVDatos);
+  m:=d(1);
+  r:=MAKEMAT(0,m+2,5);
+  lab:={};
+  k:=0;
+  FOR i FROM 1 TO m DO
+    k:=k+1;
+    s:=1;
+    IF CVDatos(i,4)==1 THEN
+      s:=-1;
+    END;
+    r(k,1):=s*CVDatos(i,1);
+    r(k,2):=s*CVDatos(i,2);
+    r(k,3):=s*CVDatos(i,3);
+    IF CVDatos(i,4)==0 THEN
+      r(k,4):=1;
+    END;
+    r(k,5):=i;
+    lab(k):="R"+STRING(i);
+  END;
+  FOR j FROM 1 TO 2 DO
+    IF CVTipo(j)<>0 THEN
+      k:=k+1;
+      r(k,j):=-CVTipo(j);
+      IF CVTipo(j)==1 THEN
+        lab(k):="x"+STRING(j)+">=0";
+      ELSE
+        lab(k):="x"+STRING(j)+"<=0";
+      END;
+    END;
+  END;
+  RETURN {r,lab,k};
+END;
+
+// 0 si (x,y) es factible; si no, indice de la primera restriccion violada.
+CVViola(r,k,x,y)
+BEGIN
+  LOCAL q,vv,tol;
+  FOR q FROM 1 TO k DO
+    vv:=r(q,1)*x+r(q,2)*y-r(q,3);
+    tol:=1E-7*MAX(1,ABS(r(q,3)));
+    IF vv>tol THEN
+      RETURN q;
+    END;
+    IF r(q,4)==1 AND vv<-tol THEN
+      RETURN q;
+    END;
+  END;
+  RETURN 0;
+END;
+
+// Vertices factibles y direcciones de recesion (normalizadas).
+CVNucleo2D()
+BEGIN
+  LOCAL f,r,lab,k,p,q,dt,x;
+  LOCAL y,vv,dup,t,vx,vy,vp,vq;
+  LOCAL dx,dy,nr,sg,ok,a1,a2;
+  f:=CVFilas();
+  r:=f(1);
+  lab:=f(2);
+  k:=f(3);
+  vx:={}; vy:={}; vp:={}; vq:={};
+  FOR p FROM 1 TO k-1 DO
+    FOR q FROM p+1 TO k DO
+      dt:=r(p,1)*r(q,2)-r(p,2)*r(q,1);
+      IF ABS(dt)>1E-12 THEN
+        x:=(r(p,3)*r(q,2)-r(p,2)*r(q,3))/dt;
+        y:=(r(p,1)*r(q,3)-r(p,3)*r(q,1))/dt;
+        IF CVViola(r,k,x,y)==0 THEN
+          dup:=0;
+          FOR t FROM 1 TO SIZE(vx) DO
+            IF ABS(vx(t)-x)<1E-7 AND ABS(vy(t)-y)<1E-7 THEN
+              dup:=t;
+            END;
+          END;
+          IF dup==0 THEN
+            vx(SIZE(vx)+1):=x;
+            vy(SIZE(vy)+1):=y;
+            vp(SIZE(vp)+1):=p;
+            vq(SIZE(vq)+1):=q;
+          END;
+        END;
+      END;
+    END;
+  END;
+  dx:={}; dy:={};
+  FOR p FROM 1 TO k DO
+    FOR sg FROM -1 TO 1 STEP 2 DO
+      a1:=-sg*r(p,2);
+      a2:=sg*r(p,1);
+      nr:=(a1^2+a2^2)^0.5;
+      IF nr>1E-12 THEN
+        a1:=a1/nr;
+        a2:=a2/nr;
+        ok:=1;
+        FOR q FROM 1 TO k DO
+          vv:=r(q,1)*a1+r(q,2)*a2;
+          IF vv>1E-9 THEN
+            ok:=0;
+          END;
+          IF r(q,4)==1 AND vv<-1E-9 THEN
+            ok:=0;
+          END;
+        END;
+        FOR t FROM 1 TO SIZE(dx) DO
+          IF ABS(dx(t)-a1)<1E-7 AND ABS(dy(t)-a2)<1E-7 THEN
+            ok:=0;
+          END;
+        END;
+        IF ok==1 THEN
+          dx(SIZE(dx)+1):=a1;
+          dy(SIZE(dy)+1):=a2;
+        END;
+      END;
+    END;
+  END;
+  RETURN {r,lab,k,vx,vy,vp,vq,dx,dy};
+END;
+
+// Estado: 0 sin vertices, 1 optimo, 2 no acotado.
+// Devuelve {estado, mejor z, lista vertices optimos, rayo que mejora, rayos con c*d=0}.
+CVOptimo(nu)
+BEGIN
+  LOCAL vx,vy,dx,dy,t,s,c1,c2;
+  LOCAL best,zz,opts,ub,zr;
+  vx:=nu(4); vy:=nu(5); dx:=nu(8); dy:=nu(9);
+  c1:=CVCoste(1); c2:=CVCoste(2); s:=CVSentido;
+  ub:=0;
+  zr:={};
+  FOR t FROM 1 TO SIZE(dx) DO
+    zz:=s*(c1*dx(t)+c2*dy(t));
+    IF zz>1E-9 AND ub==0 THEN
+      ub:=t;
+    END;
+    IF ABS(zz)<=1E-9 THEN
+      zr(SIZE(zr)+1):=t;
+    END;
+  END;
+  IF SIZE(vx)==0 THEN
+    RETURN {0,0,{},ub,zr};
+  END;
+  IF ub>0 THEN
+    RETURN {2,0,{},ub,zr};
+  END;
+  best:=-1E99;
+  FOR t FROM 1 TO SIZE(vx) DO
+    best:=MAX(best,s*(c1*vx(t)+c2*vy(t)));
+  END;
+  opts:={};
+  FOR t FROM 1 TO SIZE(vx) DO
+    IF ABS(s*(c1*vx(t)+c2*vy(t))-best)<=1E-7*MAX(1,ABS(best)) THEN
+      opts(SIZE(opts)+1):=t;
+    END;
+  END;
+  RETURN {1,s*best,opts,0,zr};
+END;
+
+CVRestTxt(ir)
+BEGIN
+  LOCAL txt,rel;
+  txt:="R"+STRING(ir)+": "+CVLin({CVDatos(ir,1),CVDatos(ir,2)},{"x1","x2"});
+  rel:=" <= ";
+  IF CVDatos(ir,4)==0 THEN
+    rel:=" = ";
+  END;
+  IF CVDatos(ir,4)==1 THEN
+    rel:=" >= ";
+  END;
+  RETURN txt+rel+CVF(CVDatos(ir,3));
+END;
+
+CVVer2D()
+BEGIN
+  LOCAL nu,r,lab,k,p,q,dt,x;
+  LOCAL y,vx,vy,dx,dy,t,c1,c2;
+  LOCAL op,txt,vio,m,i,lhs,hol,o;
+  nu:=CVNucleo2D();
+  r:=nu(1); lab:=nu(2); k:=nu(3);
+  vx:=nu(4); vy:=nu(5); dx:=nu(8); dy:=nu(9);
+  c1:=CVCoste(1); c2:=CVCoste(2);
+  m:=SIZE(CVDatos);
+  m:=m(1);
+  PRINT();
+  PRINT("== PL 2D: METODO GRAFICO ==");
+  txt:="MIN";
+  IF CVSentido==1 THEN
+    txt:="MAX";
+  END;
+  PRINT(txt+" z = "+CVLin({c1,c2},{"x1","x2"}));
+  FOR i FROM 1 TO m DO
+    PRINT(CVRestTxt(i));
+  END;
+  PRINT("1) Cortes de cada par de rectas:");
+  FOR p FROM 1 TO k-1 DO
+    FOR q FROM p+1 TO k DO
+      dt:=r(p,1)*r(q,2)-r(p,2)*r(q,1);
+      txt:=lab(p)+" & "+lab(q)+": ";
+      IF ABS(dt)<=1E-12 THEN
+        PRINT(txt+"paralelas");
+      ELSE
+        x:=(r(p,3)*r(q,2)-r(p,2)*r(q,3))/dt;
+        y:=(r(p,1)*r(q,3)-r(p,3)*r(q,1))/dt;
+        vio:=CVViola(r,k,x,y);
+        txt:=txt+"("+CVF(x)+", "+CVF(y)+")";
+        IF vio==0 THEN
+          PRINT(txt+" SI");
+        ELSE
+          PRINT(txt+" no, viola "+lab(vio));
+        END;
+      END;
+    END;
+  END;
+  IF SIZE(vx)==0 THEN
+    PRINT("Sin vertices factibles:");
+    PRINT("region vacia (infactible).");
+    RETURN 0;
+  END;
+  PRINT("2) Vertices y valor de z:");
+  FOR t FROM 1 TO SIZE(vx) DO
+    PRINT("V"+STRING(t)+"=("+CVF(vx(t))+", "+CVF(vy(t))+")  z="+CVF(c1*vx(t)+c2*vy(t)));
+  END;
+  IF SIZE(dx)==0 THEN
+    PRINT("3) Region acotada (sin direcciones).");
+  ELSE
+    PRINT("3) Region NO acotada. Direcciones");
+    PRINT("   extremas de recesion:");
+    FOR t FROM 1 TO SIZE(dx) DO
+      o:=CVDirEsc({dx(t),dy(t)});
+      PRINT("   d"+STRING(t)+"="+CVFV(o)+"  c*d="+CVF(c1*o(1)+c2*o(2)));
+    END;
+  END;
+  op:=CVOptimo(nu);
+  PRINT("4) Decision:");
+  IF op(1)==2 THEN
+    t:=op(4);
+    PRINT("NO ACOTADO: z mejora sin limite");
+    PRINT("por la direccion d"+STRING(t)+"="+CVDirTxt({dx(t),dy(t)}));
+    RETURN 0;
+  END;
+  o:=op(3);
+  t:=o(1);
+  IF SIZE(o)==1 THEN
+    PRINT("OPTIMO UNICO en vertice V"+STRING(t));
+  ELSE
+    PRINT("OPTIMOS MULTIPLES (empate):");
+    FOR i FROM 1 TO SIZE(o) DO
+      PRINT("  V"+STRING(o(i))+"=("+CVF(vx(o(i)))+", "+CVF(vy(o(i)))+")");
+    END;
+    PRINT("Todo el segmento entre ellos.");
+  END;
+  o:=op(5);
+  IF SIZE(o)>0 THEN
+    PRINT("Tambien optimos: V+t*d, t>=0, con");
+    FOR i FROM 1 TO SIZE(o) DO
+      PRINT("  d="+CVDirTxt({dx(o(i)),dy(o(i))}));
+    END;
+  END;
+  o:=op(3);
+  PRINT("x1*="+CVF(vx(t))+"  x2*="+CVF(vy(t)));
+  PRINT("z*="+CVF(op(2)));
+  PRINT("5) Holguras en el optimo:");
+  FOR i FROM 1 TO m DO
+    lhs:=CVDatos(i,1)*vx(t)+CVDatos(i,2)*vy(t);
+    txt:="R"+STRING(i)+": lhs="+CVF(lhs)+" b="+CVF(CVDatos(i,3));
+    IF CVDatos(i,4)==0 THEN
+      PRINT(txt+" (igualdad)");
+    ELSE
+      hol:=CVDatos(i,3)-lhs;
+      IF CVDatos(i,4)==1 THEN
+        hol:=-hol;
+        txt:=txt+" exceso=";
+      ELSE
+        txt:=txt+" holg=";
+      END;
+      IF ABS(hol)<=1E-7 THEN
+        PRINT(txt+"0 ACTIVA");
+      ELSE
+        PRINT(txt+CVF(hol));
+      END;
+    END;
+  END;
+  PRINT("Opcion 3: sensibilidad.");
+  RETURN 1;
+END;
+
+CVSens2D()
+BEGIN
+  LOCAL nu,r,lab,k,vx,vy,op,t;
+  LOCAL x,y,act,q,p,sg,tx,ty;
+  LOCAL ex,ey,ok,vv,c1,c2,s,lo;
+  LOCAL hi,bnd,p1,p2,dt,b11,b12,b21;
+  LOCAL b22,y1,y2,w1,w2,aw,sl,j;
+  LOCAL src,yo,bo,lo2,hi2,txt,m,i;
+  nu:=CVNucleo2D();
+  r:=nu(1); lab:=nu(2); k:=nu(3);
+  vx:=nu(4); vy:=nu(5);
+  op:=CVOptimo(nu);
+  PRINT();
+  PRINT("== SENSIBILIDAD PL 2D ==");
+  IF op(1)<>1 THEN
+    PRINT("No hay optimo finito.");
+    RETURN 0;
+  END;
+  c1:=CVCoste(1); c2:=CVCoste(2); s:=CVSentido;
+  t:=op(3);
+  t:=t(1);
+  x:=vx(t); y:=vy(t);
+  PRINT("Optimo x*=("+CVF(x)+", "+CVF(y)+") z*="+CVF(op(2)));
+  IF SIZE(op(3))>1 THEN
+    PRINT("Aviso: optimos multiples; se");
+    PRINT("analiza V"+STRING(t)+". Algun rango es 0.");
+  END;
+  act:={};
+  FOR q FROM 1 TO k DO
+    IF ABS(r(q,1)*x+r(q,2)*y-r(q,3))<=1E-7*MAX(1,ABS(r(q,3))) THEN
+      act(SIZE(act)+1):=q;
+    END;
+  END;
+  txt:="Activas: ";
+  FOR q FROM 1 TO SIZE(act) DO
+    txt:=txt+lab(act(q))+" ";
+  END;
+  PRINT(txt);
+  // Aristas factibles que salen del vertice.
+  ex:={}; ey:={};
+  FOR p FROM 1 TO SIZE(act) DO
+    FOR sg FROM -1 TO 1 STEP 2 DO
+      tx:=-sg*r(act(p),2);
+      ty:=sg*r(act(p),1);
+      ok:=1;
+      FOR q FROM 1 TO SIZE(act) DO
+        vv:=r(act(q),1)*tx+r(act(q),2)*ty;
+        IF vv>1E-9 THEN
+          ok:=0;
+        END;
+        IF r(act(q),4)==1 AND vv<-1E-9 THEN
+          ok:=0;
+        END;
+      END;
+      IF ok==1 THEN
+        ex(SIZE(ex)+1):=tx;
+        ey(SIZE(ey)+1):=ty;
+      END;
+    END;
+  END;
+  PRINT("1) Coeficientes del objetivo");
+  PRINT("Aristas desde x*: d con");
+  IF s==1 THEN
+    PRINT("optimo <=> c*d<=0 en cada arista");
+  ELSE
+    PRINT("optimo <=> c*d>=0 en cada arista");
+  END;
+  FOR p FROM 1 TO SIZE(ex) DO
+    PRINT("  d="+CVDirTxt({ex(p),ey(p)}));
+  END;
+  lo:=-1E99; hi:=1E99;
+  FOR p FROM 1 TO SIZE(ex) DO
+    IF ABS(ex(p))>1E-12 THEN
+      bnd:=-c2*ey(p)/ex(p);
+      IF s*ex(p)>0 THEN
+        hi:=MIN(hi,bnd);
+      ELSE
+        lo:=MAX(lo,bnd);
+      END;
+    END;
+  END;
+  PRINT("c1 en ["+CVF(lo)+", "+CVF(hi)+"] (c2="+CVF(c2)+")");
+  lo:=-1E99; hi:=1E99;
+  FOR p FROM 1 TO SIZE(ex) DO
+    IF ABS(ey(p))>1E-12 THEN
+      bnd:=-c1*ex(p)/ey(p);
+      IF s*ey(p)>0 THEN
+        hi:=MIN(hi,bnd);
+      ELSE
+        lo:=MAX(lo,bnd);
+      END;
+    END;
+  END;
+  PRINT("c2 en ["+CVF(lo)+", "+CVF(hi)+"] (c1="+CVF(c1)+")");
+  PRINT("2) Terminos independientes b");
+  m:=SIZE(CVDatos);
+  m:=m(1);
+  IF SIZE(act)<>2 THEN
+    PRINT("Vertice degenerado ("+STRING(SIZE(act))+" activas):");
+    PRINT("precios sombra no unicos.");
+  END;
+  IF SIZE(act)==2 THEN
+    p1:=act(1); p2:=act(2);
+    dt:=r(p1,1)*r(p2,2)-r(p1,2)*r(p2,1);
+    b11:=r(p2,2)/dt; b12:=-r(p1,2)/dt;
+    b21:=-r(p2,1)/dt; b22:=r(p1,1)/dt;
+    // B^-1=[[b11,b12],[b21,b22]]; y=B^-T c.
+    y1:=c1*b11+c2*b21;
+    y2:=c1*b12+c2*b22;
+    FOR j FROM 1 TO 2 DO
+      p:=act(j);
+      IF j==1 THEN
+        w1:=b11; w2:=b21; yo:=y1;
+      ELSE
+        w1:=b12; w2:=b22; yo:=y2;
+      END;
+      lo:=-1E99; hi:=1E99;
+      FOR q FROM 1 TO k DO
+        IF q<>p1 AND q<>p2 THEN
+          aw:=r(q,1)*w1+r(q,2)*w2;
+          sl:=r(q,3)-(r(q,1)*x+r(q,2)*y);
+          IF aw>1E-12 THEN
+            hi:=MIN(hi,sl/aw);
+          END;
+          IF aw<-1E-12 THEN
+            lo:=MAX(lo,sl/aw);
+          END;
+        END;
+      END;
+      src:=r(p,5);
+      IF src>0 THEN
+        bo:=CVDatos(src,3);
+        IF CVDatos(src,4)==1 THEN
+          yo:=-yo;
+          lo2:=bo-hi; hi2:=bo-lo;
+        ELSE
+          lo2:=bo+lo; hi2:=bo+hi;
+        END;
+        IF lo<-1E98 THEN
+          IF CVDatos(src,4)==1 THEN
+            hi2:=1E99;
+          ELSE
+            lo2:=-1E99;
+          END;
+        END;
+        IF hi>1E98 THEN
+          IF CVDatos(src,4)==1 THEN
+            lo2:=-1E99;
+          ELSE
+            hi2:=1E99;
+          END;
+        END;
+        PRINT("R"+STRING(src)+" ACTIVA: precio sombra");
+        PRINT("  y="+CVF(yo)+" (dz/db)");
+        PRINT("  b en ["+CVF(lo2)+", "+CVF(hi2)+"]");
+        PRINT("  z(b)=z*+y*(b-"+CVF(bo)+")");
+      ELSE
+        PRINT(lab(p)+" activa: coste reducido");
+        PRINT("  "+CVF(-yo)+" (dz por unidad de x>0)");
+      END;
+    END;
+  END;
+  FOR i FROM 1 TO m DO
+    vv:=CVDatos(i,1)*x+CVDatos(i,2)*y;
+    IF ABS(vv-CVDatos(i,3))>1E-7*MAX(1,ABS(CVDatos(i,3))) THEN
+      PRINT("R"+STRING(i)+" NO activa: precio 0");
+      IF CVDatos(i,4)==1 THEN
+        PRINT("  b en [-inf, "+CVF(vv)+"]");
+      ELSE
+        PRINT("  b en ["+CVF(vv)+", +inf]");
+      END;
+    END;
+  END;
+  PRINT("Cambiar solo un dato cada vez.");
+  RETURN 1;
+END;
+
+CVPx(x,x0,x1)
+BEGIN
+  RETURN MAX(-3000,MIN(3000,ROUND((x-x0)/(x1-x0)*319,0)));
+END;
+
+CVPy(y,y0,y1)
+BEGIN
+  RETURN MAX(-3000,MIN(3000,ROUND((y1-y)/(y1-y0)*219,0)));
+END;
+
+CVDibujar()
+BEGIN
+  LOCAL nu,r,lab,k,vx,vy,dx,x0;
+  LOCAL x1,y0,y1,px,py,x,y,t;
+  LOCAL w,h,a,b,c,u1,v1,u2;
+  LOCAL v2,cx,cy,nn,op,o,col;
+  nu:=CVNucleo2D();
+  r:=nu(1); lab:=nu(2); k:=nu(3);
+  vx:=nu(4); vy:=nu(5); dx:=nu(8);
+  x0:=0; x1:=1; y0:=0; y1:=1;
+  FOR t FROM 1 TO SIZE(vx) DO
+    x0:=MIN(x0,vx(t)); x1:=MAX(x1,vx(t));
+    y0:=MIN(y0,vy(t)); y1:=MAX(y1,vy(t));
+  END;
+  w:=x1-x0; h:=y1-y0;
+  IF SIZE(dx)>0 THEN
+    x1:=x1+0.6*w; y1:=y1+0.6*h;
+    w:=x1-x0; h:=y1-y0;
+  END;
+  x0:=x0-0.1*w; x1:=x1+0.1*w;
+  y0:=y0-0.1*h; y1:=y1+0.1*h;
+  RECT_P();
+  col:=RGB(90,140,240);
+  FOR px FROM 0 TO 319 STEP 4 DO
+    FOR py FROM 0 TO 219 STEP 4 DO
+      x:=x0+px*(x1-x0)/319;
+      y:=y1-py*(y1-y0)/219;
+      IF CVViola(r,k,x,y)==0 THEN
+        PIXON_P(px,py,col);
+      END;
+    END;
+  END;
+  IF x0<0 AND x1>0 THEN
+    LINE_P(CVPx(0,x0,x1),0,CVPx(0,x0,x1),219,RGB(0,0,0));
+  END;
+  IF y0<0 AND y1>0 THEN
+    LINE_P(0,CVPy(0,y0,y1),319,CVPy(0,y0,y1),RGB(0,0,0));
+  END;
+  cx:=(x0+x1)/2; cy:=(y0+y1)/2;
+  FOR t FROM 1 TO k DO
+    a:=r(t,1); b:=r(t,2); c:=r(t,3);
+    IF ABS(a)+ABS(b)>1E-12 THEN
+      IF ABS(b)>=ABS(a) THEN
+        u1:=x0; u2:=x1;
+        v1:=(c-a*u1)/b; v2:=(c-a*u2)/b;
+      ELSE
+        v1:=y0; v2:=y1;
+        u1:=(c-b*v1)/a; u2:=(c-b*v2)/a;
+      END;
+      LINE_P(CVPx(u1,x0,x1),CVPy(v1,y0,y1),CVPx(u2,x0,x1),CVPy(v2,y0,y1),RGB(60,60,60));
+      nn:=(a*cx+b*cy-c)/(a^2+b^2);
+      px:=CVPx(cx-nn*a,x0,x1);
+      py:=CVPy(cy-nn*b,y0,y1);
+      IF px>=0 AND px<300 AND py>=0 AND py<210 THEN
+        TEXTOUT_P(lab(t),px+2,py+2,1,RGB(120,0,120));
+      END;
+    END;
+  END;
+  op:=CVOptimo(nu);
+  FOR t FROM 1 TO SIZE(vx) DO
+    px:=CVPx(vx(t),x0,x1); py:=CVPy(vy(t),y0,y1);
+    RECT_P(px-2,py-2,px+2,py+2,RGB(0,0,0),RGB(0,0,0));
+  END;
+  IF op(1)==1 THEN
+    o:=op(3);
+    t:=o(1);
+    a:=CVCoste(1); b:=CVCoste(2); c:=a*vx(t)+b*vy(t);
+    IF ABS(a)+ABS(b)>1E-12 THEN
+      IF ABS(b)>=ABS(a) THEN
+        u1:=x0; u2:=x1;
+        v1:=(c-a*u1)/b; v2:=(c-a*u2)/b;
+      ELSE
+        v1:=y0; v2:=y1;
+        u1:=(c-b*v1)/a; u2:=(c-b*v2)/a;
+      END;
+      LINE_P(CVPx(u1,x0,x1),CVPy(v1,y0,y1),CVPx(u2,x0,x1),CVPy(v2,y0,y1),RGB(0,150,0));
+    END;
+    px:=CVPx(vx(t),x0,x1); py:=CVPy(vy(t),y0,y1);
+    RECT_P(px-4,py-4,px+4,py+4,RGB(255,0,0),RGB(255,0,0));
+    TEXTOUT_P("Opt ("+CVF(vx(t))+", "+CVF(vy(t))+") z="+CVF(c),2,224,1,RGB(200,0,0));
+  END;
+  IF op(1)==2 THEN
+    TEXTOUT_P("NO ACOTADO",2,224,1,RGB(200,0,0));
+  END;
+  TEXTOUT_P("x["+CVF(ROUND(x0,2))+","+CVF(ROUND(x1,2))+"] y["+CVF(ROUND(y0,2))+","+CVF(ROUND(y1,2))+"]",170,224,1,RGB(0,0,0));
+  TEXTOUT_P("Pulsa una tecla",2,2,1,RGB(90,90,90));
+  WHILE GETKEY==-1 DO
+    WAIT(0.1);
+  END;
+END;
+
+// ---------- Forma estandar y soluciones basicas (n variables) ----------
+
+CVStd()
+BEGIN
+  LOCAL d,m,n,nc,j,i,a,nm;
+  LOCAL mo,ms,col,b;
+  d:=SIZE(CVDatos);
+  m:=d(1);
+  n:=d(2)-2;
+  nc:=0;
+  FOR j FROM 1 TO n DO
+    IF CVTipo(j)==0 THEN
+      nc:=nc+2;
+    ELSE
+      nc:=nc+1;
+    END;
+  END;
+  FOR i FROM 1 TO m DO
+    IF CVDatos(i,n+2)<>0 THEN
+      nc:=nc+1;
+    END;
+  END;
+  a:=MAKEMAT(0,m,nc);
+  b:=MAKEMAT(0,m,1);
+  nm:={}; mo:={}; ms:={};
+  col:=0;
+  FOR j FROM 1 TO n DO
+    col:=col+1;
+    IF CVTipo(j)==1 THEN
+      FOR i FROM 1 TO m DO
+        a(i,col):=CVDatos(i,j);
+      END;
+      nm(col):="x"+STRING(j);
+      mo(col):=j; ms(col):=1;
+    END;
+    IF CVTipo(j)==-1 THEN
+      FOR i FROM 1 TO m DO
+        a(i,col):=-CVDatos(i,j);
+      END;
+      nm(col):="x"+STRING(j)+"'";
+      mo(col):=j; ms(col):=-1;
+    END;
+    IF CVTipo(j)==0 THEN
+      FOR i FROM 1 TO m DO
+        a(i,col):=CVDatos(i,j);
+      END;
+      nm(col):="x"+STRING(j)+"+";
+      mo(col):=j; ms(col):=1;
+      col:=col+1;
+      FOR i FROM 1 TO m DO
+        a(i,col):=-CVDatos(i,j);
+      END;
+      nm(col):="x"+STRING(j)+"-";
+      mo(col):=j; ms(col):=-1;
+    END;
+  END;
+  FOR i FROM 1 TO m DO
+    IF CVDatos(i,n+2)<>0 THEN
+      col:=col+1;
+      a(i,col):=-CVDatos(i,n+2);
+      IF CVDatos(i,n+2)==-1 THEN
+        nm(col):="s"+STRING(i)+"+";
+      ELSE
+        nm(col):="s"+STRING(i)+"-";
+      END;
+      mo(col):=0; ms(col):=0;
+    END;
+    b(i,1):=CVDatos(i,n+1);
+  END;
+  RETURN {a,b,nm,mo,ms,m,nc,n};
+END;
+
+CVValidaStd()
+BEGIN
+  LOCAL d;
+  IF TYPE(CVDatos)<>4 THEN
+    RETURN "CVDatos debe ser matriz.";
+  END;
+  d:=SIZE(CVDatos);
+  IF d(2)<3 THEN
+    RETURN "Faltan columnas en CVDatos.";
+  END;
+  IF SIZE(CVTipo)<>d(2)-2 THEN
+    RETURN "CVTipo: un signo por variable.";
+  END;
+  RETURN "";
+END;
+
+CVEc(a,ir,nc,nm)
+BEGIN
+  RETURN CVLin(CVFila(a,ir),nm);
+END;
+
+CVVerStd()
+BEGIN
+  LOCAL st,a,b,nm,m,nc,n,j;
+  LOCAL i,txt;
+  st:=CVStd();
+  a:=st(1); b:=st(2); nm:=st(3);
+  m:=st(6); nc:=st(7); n:=st(8);
+  PRINT();
+  PRINT("== FORMA Ax=b, x>=0 ==");
+  PRINT("1) Cambios de variable:");
+  txt:="  (ninguno: todas >=0)";
+  FOR j FROM 1 TO n DO
+    IF CVTipo(j)<>1 THEN
+      txt:="";
+    END;
+  END;
+  IF txt<>"" THEN
+    PRINT(txt);
+  END;
+  FOR j FROM 1 TO n DO
+    IF CVTipo(j)==-1 THEN
+      PRINT("  x"+STRING(j)+" <= 0: x"+STRING(j)+" = -x"+STRING(j)+"'");
+    END;
+    IF CVTipo(j)==0 THEN
+      PRINT("  x"+STRING(j)+" libre: x"+STRING(j)+" = x"+STRING(j)+"+ - x"+STRING(j)+"-");
+    END;
+  END;
+  PRINT("2) <=: +holgura s+;  >=: -exceso s-");
+  PRINT("3) Sistema:");
+  FOR i FROM 1 TO m DO
+    PRINT(CVEc(a,i,nc,nm)+" = "+CVF(b(i,1)));
+  END;
+  txt:="";
+  FOR j FROM 1 TO nc DO
+    txt:=txt+nm(j)+" ";
+  END;
+  PRINT(txt+">= 0");
+  PRINT("Matriz A (columnas en ese orden):");
+  FOR i FROM 1 TO m DO
+    txt:="[";
+    FOR j FROM 1 TO nc DO
+      txt:=txt+CVF(a(i,j));
+      IF j<nc THEN
+        txt:=txt+" ";
+      END;
+    END;
+    PRINT(txt+" | "+CVF(b(i,1))+"]");
+  END;
+  RETURN 1;
+END;
+
+CVOrig(vec,cb,mo,ms,n)
+// vec: valores de las columnas indicadas en cb. Devuelve x original.
+BEGIN
+  LOCAL xo,k,col;
+  xo:={};
+  FOR k FROM 1 TO n DO
+    xo(k):=0;
+  END;
+  FOR k FROM 1 TO SIZE(cb) DO
+    col:=cb(k);
+    IF mo(col)>0 THEN
+      xo(mo(col)):=xo(mo(col))+ms(col)*vec(k);
+    END;
+  END;
+  RETURN xo;
+END;
+
+CVIgualLista(u,v)
+BEGIN
+  LOCAL k;
+  FOR k FROM 1 TO SIZE(u) DO
+    IF ABS(u(k)-v(k))>1E-7 THEN
+      RETURN 0;
+    END;
+  END;
+  RETURN 1;
+END;
+
+CVNormaliza(u)
+BEGIN
+  LOCAL k,nr,out;
+  nr:=0;
+  FOR k FROM 1 TO SIZE(u) DO
+    nr:=nr+u(k)^2;
+  END;
+  nr:=nr^0.5;
+  out:={};
+  FOR k FROM 1 TO SIZE(u) DO
+    out(k):=u(k)/nr;
+  END;
+  RETURN out;
+END;
+
+CVBases()
+BEGIN
+  LOCAL st,a,b,nm,mo,ms,m,nc;
+  LOCAL n,cb,bm,i,j,dt,bv,xb;
+  LOCAL fe,nz,txt,xo,exl,dl,dn,jj;
+  LOCAL cv,neg,dd,vals,k,dup,cnt;
+  st:=CVStd();
+  a:=st(1); b:=st(2); nm:=st(3); mo:=st(4); ms:=st(5);
+  m:=st(6); nc:=st(7); n:=st(8);
+  PRINT();
+  PRINT("== SOLUCIONES BASICAS ==");
+  IF m>nc THEN
+    PRINT("Mas filas que columnas.");
+    RETURN 0;
+  END;
+  PRINT("A es "+STRING(m)+"x"+STRING(nc)+": C("+STRING(nc)+","+STRING(m)+")="+STRING(COMB(nc,m))+" matrices B");
+  PRINT("xB=B^-1 b, xD=0. Factible si xB>=0");
+  exl:={}; dl:={}; dn:={};
+  cb:=CVPrimera(m);
+  cnt:=0;
+  REPEAT
+    cnt:=cnt+1;
+    bm:=MAKEMAT(0,m,m);
+    txt:="";
+    FOR j FROM 1 TO m DO
+      FOR i FROM 1 TO m DO
+        bm(i,j):=a(i,cb(j));
+      END;
+      txt:=txt+nm(cb(j));
+      IF j<m THEN
+        txt:=txt+",";
+      END;
+    END;
+    txt:=STRING(cnt)+") B{"+txt+"}";
+    dt:=DET(bm);
+    IF ABS(dt)<1E-10 THEN
+      PRINT(txt+": det=0, no es base");
+    ELSE
+      bv:=bm^(-1);
+      xb:=bv*b;
+      fe:=1; nz:=0; vals:={};
+      FOR i FROM 1 TO m DO
+        vals(i):=xb(i,1);
+        IF xb(i,1)<-1E-9 THEN
+          fe:=0;
+        END;
+        IF ABS(xb(i,1))>1E-9 THEN
+          nz:=nz+1;
+        END;
+      END;
+      IF fe==0 THEN
+        PRINT(txt+": xB="+CVFV(vals)+" NO factible");
+      ELSE
+        xo:=CVOrig(vals,cb,mo,ms,n);
+        PRINT(txt+": xB="+CVFV(vals)+" FACTIBLE");
+        IF nz<m THEN
+          PRINT("   x="+CVFV(xo)+" punto extremo (degenerado)");
+        ELSE
+          PRINT("   x="+CVFV(xo)+" punto extremo");
+        END;
+        PRINT("   B^-1:");
+        FOR i FROM 1 TO m DO
+          PRINT("   "+CVFV(CVFila(bv,i)));
+        END;
+        dup:=0;
+        FOR k FROM 1 TO SIZE(exl) DO
+          IF CVIgualLista(exl(k),xo)==1 THEN
+            dup:=1;
+          END;
+        END;
+        IF dup==0 THEN
+          exl(SIZE(exl)+1):=xo;
+        END;
+        // Direcciones: columnas no basicas con B^-1 a_j <= 0.
+        FOR jj FROM 1 TO nc DO
+          neg:=1;
+          FOR k FROM 1 TO m DO
+            IF cb(k)==jj THEN
+              neg:=0;
+            END;
+          END;
+          IF neg==1 THEN
+            cv:={};
+            FOR i FROM 1 TO m DO
+              cv(i):=0;
+              FOR k FROM 1 TO m DO
+                cv(i):=cv(i)+bv(i,k)*a(k,jj);
+              END;
+              IF cv(i)>1E-9 THEN
+                neg:=0;
+              END;
+            END;
+            IF neg==1 THEN
+              dd:={};
+              FOR k FROM 1 TO nc DO
+                dd(k):=0;
+              END;
+              FOR i FROM 1 TO m DO
+                dd(cb(i)):=-cv(i);
+              END;
+              dd(jj):=1;
+              PRINT("   B^-1*a("+nm(jj)+")="+CVFV(cv)+"<=0");
+              PRINT("   -> d="+CVFV(dd));
+              xo:={};
+              FOR k FROM 1 TO n DO
+                xo(k):=0;
+              END;
+              FOR k FROM 1 TO nc DO
+                IF mo(k)>0 THEN
+                  xo(mo(k)):=xo(mo(k))+ms(k)*dd(k);
+                END;
+              END;
+              PRINT("   en variables x: "+CVDirTxt(xo));
+              vals:=CVNormaliza(xo);
+              dup:=0;
+              FOR k FROM 1 TO SIZE(dn) DO
+                IF CVIgualLista(dn(k),vals)==1 THEN
+                  dup:=1;
+                END;
+              END;
+              IF dup==0 THEN
+                dn(SIZE(dn)+1):=vals;
+                dl(SIZE(dl)+1):=xo;
+              END;
+            END;
+          END;
+        END;
+      END;
+    END;
+    cb:=CVSigComb(cb,nc);
+  UNTIL SIZE(cb)==0;
+  PRINT("== RESUMEN ==");
+  PRINT("Puntos extremos:");
+  FOR k FROM 1 TO SIZE(exl) DO
+    PRINT("  v"+STRING(k)+"="+CVFV(exl(k)));
+  END;
+  IF SIZE(dl)==0 THEN
+    PRINT("Sin direcciones extremas (acotado).");
+  ELSE
+    PRINT("Direcciones extremas:");
+    FOR k FROM 1 TO SIZE(dl) DO
+      PRINT("  d"+STRING(k)+"="+CVDirTxt(dl(k)));
+    END;
+  END;
+  CVExt:=exl;
+  CVDirExt:=dl;
+  PRINT("Guardados en CVExt y CVDirExt.");
+  RETURN 1;
+END;
+
+// ---------- Envolventes y representacion ----------
+
+CVMatLista(mat,saltaCeros)
+BEGIN
+  LOCAL d,i,j,out,fila,nz;
+  d:=SIZE(mat);
+  out:={};
+  FOR i FROM 1 TO d(1) DO
+    fila:={};
+    nz:=0;
+    FOR j FROM 1 TO d(2) DO
+      fila(j):=mat(i,j);
+      IF ABS(mat(i,j))>1E-12 THEN
+        nz:=1;
+      END;
+    END;
+    IF nz==1 OR saltaCeros==0 THEN
+      out(SIZE(out)+1):=fila;
+    END;
+  END;
+  RETURN out;
+END;
+
+// Busca x = sum l_i v_i + sum m_j d_j, l>=0, sum l=1, m>=0 con el menor
+// numero de elementos (a lo sumo n+1). Devuelve {indices, coeficientes} o {}.
+CVRepr(vl,dl,x)
+BEGIN
+  LOCAL n,nv,kt,s,cb,mm,tv,g;
+  LOCAL sol,k,j,col,ok,res,vv,src;
+  n:=SIZE(x);
+  nv:=SIZE(vl);
+  kt:=nv+SIZE(dl);
+  tv:=MAKEMAT(0,n+1,1);
+  FOR j FROM 1 TO n DO
+    tv(j,1):=x(j);
+  END;
+  tv(n+1,1):=1;
+  FOR s FROM 1 TO MIN(n+1,kt) DO
+    cb:=CVPrimera(s);
+    REPEAT
+      mm:=MAKEMAT(0,n+1,s);
+      FOR k FROM 1 TO s DO
+        IF cb(k)<=nv THEN
+          src:=vl(cb(k));
+          mm(n+1,k):=1;
+        ELSE
+          src:=dl(cb(k)-nv);
+          mm(n+1,k):=0;
+        END;
+        FOR j FROM 1 TO n DO
+          mm(j,k):=src(j);
+        END;
+      END;
+      g:=TRN(mm)*mm;
+      IF ABS(DET(g))>1E-10 THEN
+        sol:=g^(-1)*(TRN(mm)*tv);
+        res:=mm*sol-tv;
+        ok:=1;
+        FOR j FROM 1 TO n+1 DO
+          IF ABS(res(j,1))>1E-7 THEN
+            ok:=0;
+          END;
+        END;
+        vv:={};
+        FOR k FROM 1 TO s DO
+          vv(k):=sol(k,1);
+          IF sol(k,1)<-1E-9 THEN
+            ok:=0;
+          END;
+        END;
+        IF ok==1 THEN
+          RETURN {cb,vv};
+        END;
+      END;
+      cb:=CVSigComb(cb,kt);
+    UNTIL SIZE(cb)==0;
+  END;
+  RETURN {};
+END;
+
+CVVerRepr(vl,dl,x,nomv)
+BEGIN
+  LOCAL rp,cb,vv,k,nv,txt;
+  nv:=SIZE(vl);
+  rp:=CVRepr(vl,dl,x);
+  IF SIZE(rp)==0 THEN
+    RETURN 0;
+  END;
+  cb:=rp(1); vv:=rp(2);
+  FOR k FROM 1 TO SIZE(cb) DO
+    IF cb(k)<=nv THEN
+      PRINT("  lambda="+CVF(vv(k))+" * "+nomv+STRING(cb(k))+CVFV(vl(cb(k))));
+    ELSE
+      PRINT("  mu="+CVF(vv(k))+" * d"+STRING(cb(k)-nv)+CVFV(dl(cb(k)-nv)));
+    END;
+  END;
+  PRINT("  (los demas coeficientes = 0)");
+  RETURN 1;
+END;
+
+CVPertenece()
+BEGIN
+  LOCAL vl,ok;
+  vl:=CVMatLista(CVPuntos,0);
+  PRINT();
+  PRINT("== x en conv(A)? ==");
+  PRINT("x="+CVFV(CVX));
+  IF SIZE(CVX)<>SIZE(vl(1)) THEN
+    PRINT("Dimension de CVX distinta.");
+    RETURN 0;
+  END;
+  PRINT("Se busca x=sum l_i a_i, l_i>=0,");
+  PRINT("sum l_i=1 con <=n+1 puntos");
+  PRINT("(Caratheodory): se prueban");
+  PRINT("todos los subconjuntos.");
+  ok:=CVVerRepr(vl,{},CVX,"a");
+  IF ok==1 THEN
+    PRINT("SI pertenece a conv(A).");
+  ELSE
+    PRINT("NO pertenece: ninguna combinacion");
+    PRINT("convexa de <=n+1 puntos da x.");
+  END;
+  RETURN ok;
+END;
+
+CVExtConv()
+BEGIN
+  LOCAL vl,k,j,rest,rp,cb,vv,txt;
+  vl:=CVMatLista(CVPuntos,0);
+  PRINT();
+  PRINT("== PUNTOS EXTREMOS DE conv(A) ==");
+  PRINT("a_k extremo <=> a_k no esta en");
+  PRINT("conv(A - {a_k}).");
+  FOR k FROM 1 TO SIZE(vl) DO
+    rest:={};
+    FOR j FROM 1 TO SIZE(vl) DO
+      IF j<>k THEN
+        rest(SIZE(rest)+1):=vl(j);
+      END;
+    END;
+    rp:=CVRepr(rest,{},vl(k));
+    IF SIZE(rp)==0 THEN
+      PRINT("a"+STRING(k)+"="+CVFV(vl(k))+" EXTREMO");
+    ELSE
+      cb:=rp(1); vv:=rp(2);
+      txt:="";
+      FOR j FROM 1 TO SIZE(cb) DO
+        txt:=txt+" "+CVF(vv(j))+"*"+CVFV(rest(cb(j)));
+      END;
+      PRINT("a"+STRING(k)+"="+CVFV(vl(k))+" no:");
+      PRINT(" ="+txt);
+    END;
+  END;
+  RETURN 1;
+END;
+
+CVRepresentar()
+BEGIN
+  LOCAL op,vl,dl,ok;
+  op:=1;
+  CHOOSE(op,"Puntos y direcciones","CVExt/CVDirExt (opcion 6)","CVPuntos/CVDirs (editados)");
+  IF op==0 THEN
+    RETURN 0;
+  END;
+  IF op==1 THEN
+    vl:=CVExt; dl:=CVDirExt;
+  ELSE
+    vl:=CVMatLista(CVPuntos,0);
+    dl:=CVMatLista(CVDirs,1);
+  END;
+  PRINT();
+  PRINT("== x = sum l_i x_i + sum m_j d_j ==");
+  IF SIZE(vl)==0 THEN
+    PRINT("No hay puntos extremos.");
+    RETURN 0;
+  END;
+  IF SIZE(CVX)<>SIZE(vl(1)) THEN
+    PRINT("Dimension de CVX distinta.");
+    RETURN 0;
+  END;
+  PRINT("x="+CVFV(CVX));
+  PRINT("l_i>=0, sum l_i=1, m_j>=0");
+  ok:=CVVerRepr(vl,dl,CVX,"v");
+  IF ok==0 THEN
+    PRINT("NO se puede: x no esta en P.");
+  END;
+  RETURN ok;
+END;
+
+CVCarath()
+BEGIN
+  LOCAL d,kp,n,lam,idx,x,i,j;
+  LOCAL k,paso,mm,rr,piv,lib,mu,sm;
+  LOCAL alpha,kmin,rat,txt,nl,ni;
+  d:=SIZE(CVPuntos);
+  kp:=d(1); n:=d(2);
+  lam:=CVLambda;
+  PRINT();
+  PRINT("== CARATHEODORY ==");
+  IF SIZE(lam)<>kp THEN
+    PRINT("CVLambda: un valor por punto.");
+    RETURN 0;
+  END;
+  sm:=0;
+  x:={};
+  FOR j FROM 1 TO n DO
+    x(j):=0;
+  END;
+  FOR i FROM 1 TO kp DO
+    sm:=sm+lam(i);
+    FOR j FROM 1 TO n DO
+      x(j):=x(j)+lam(i)*CVPuntos(i,j);
+    END;
+  END;
+  PRINT("x=sum l_i a_i="+CVFV(x));
+  PRINT("sum l_i="+CVF(sm)+" (debe ser 1)");
+  idx:={};
+  FOR i FROM 1 TO kp DO
+    idx(i):=i;
+  END;
+  paso:=0;
+  WHILE SIZE(idx)>n+1 DO
+    paso:=paso+1;
+    k:=SIZE(idx);
+    PRINT("-- Paso "+STRING(paso)+": k="+STRING(k)+" > n+1="+STRING(n+1));
+    mm:=MAKEMAT(0,n,k-1);
+    FOR j FROM 2 TO k DO
+      FOR i FROM 1 TO n DO
+        mm(i,j-1):=CVPuntos(idx(j),i)-CVPuntos(idx(1),i);
+      END;
+      PRINT("a"+STRING(idx(j))+"-a"+STRING(idx(1))+"="+CVFV(CVFila(TRN(mm),j-1)));
+    END;
+    PRINT("son l.d.: buscar mu con");
+    PRINT("sum_{i>=2} mu_i(a_i-a_1)=0 (RREF)");
+    rr:=RREF(mm);
+    piv:={};
+    FOR i FROM 1 TO n DO
+      piv(i):=0;
+      FOR j FROM k-1 DOWNTO 1 DO
+        IF ABS(rr(i,j))>1E-9 THEN
+          piv(i):=j;
+        END;
+      END;
+    END;
+    lib:=0;
+    FOR j FROM 1 TO k-1 DO
+      IF lib==0 THEN
+        lib:=j;
+        FOR i FROM 1 TO n DO
+          IF piv(i)==j THEN
+            lib:=0;
+          END;
+        END;
+      END;
+    END;
+    mu:={};
+    FOR j FROM 1 TO k DO
+      mu(j):=0;
+    END;
+    mu(lib+1):=1;
+    FOR i FROM 1 TO n DO
+      IF piv(i)>0 THEN
+        mu(piv(i)+1):=-rr(i,lib);
+      END;
+    END;
+    sm:=0;
+    FOR j FROM 2 TO k DO
+      sm:=sm+mu(j);
+    END;
+    mu(1):=-sm;
+    txt:="";
+    FOR j FROM 1 TO k DO
+      txt:=txt+"a"+STRING(idx(j))+" ";
+    END;
+    PRINT("Orden: "+txt);
+    PRINT("mu="+CVFV(mu));
+    PRINT("mu_1=-sum mu_i => sum mu_i a_i=0");
+    alpha:=1E99; kmin:=0;
+    txt:="";
+    FOR j FROM 1 TO k DO
+      IF mu(j)>1E-12 THEN
+        rat:=lam(j)/mu(j);
+        txt:=txt+CVF(rat)+" ";
+        IF rat<alpha-1E-12 THEN
+          alpha:=rat; kmin:=j;
+        END;
+      END;
+    END;
+    PRINT("l_i/mu_i (mu_i>0): "+txt);
+    PRINT("alpha=min="+CVF(alpha));
+    nl:={};
+    FOR j FROM 1 TO k DO
+      nl(j):=lam(j)-alpha*mu(j);
+    END;
+    PRINT("l_i - alpha*mu_i="+CVFV(nl));
+    PRINT("Se elimina a"+STRING(idx(kmin)));
+    lam:={}; ni:={};
+    FOR j FROM 1 TO k DO
+      IF j<>kmin AND ABS(nl(j))>1E-12 THEN
+        lam(SIZE(lam)+1):=nl(j);
+        ni(SIZE(ni)+1):=idx(j);
+      END;
+    END;
+    idx:=ni;
+  END;
+  PRINT("== RESULTADO (<= n+1 puntos) ==");
+  FOR j FROM 1 TO SIZE(idx) DO
+    PRINT(CVF(lam(j))+" * a"+STRING(idx(j))+CVFV(CVFila(CVPuntos,idx(j))));
+  END;
+  PRINT("(Otra eleccion de mu da otra");
+  PRINT(" combinacion tambien valida.)");
+  RETURN 1;
+END;
+
+// ---------- Hiperplanos (2D) ----------
+
+CVMcd(a,b)
+BEGIN
+  LOCAL t;
+  a:=ABS(a); b:=ABS(b);
+  WHILE b>0.5 DO
+    t:=a MOD b;
+    a:=b; b:=t;
+  END;
+  RETURN a;
+END;
+
+CVSemiesp()
+BEGIN
+  LOCAL x1,y1,x2,y2,xi,yi,a,b;
+  LOCAL c,g,res,txt;
+  x1:=0; y1:=0; x2:=1; y2:=1; xi:=0; yi:=1;
+  res:={};
+  WHILE INPUT({x1,y1,x2,y2,xi,yi},"Recta por P y Q; I interior",{"Px","Py","Qx","Qy","Ix","Iy"},{"Punto P de la recta","","Punto Q (u otro punto del rayo)","","Punto del interior del conjunto",""})==1 DO
+    a:=y2-y1; b:=-(x2-x1);
+    c:=a*x1+b*y1;
+    IF a*xi+b*yi>c THEN
+      a:=-a; b:=-b; c:=-c;
+    END;
+    IF FP(a)==0 AND FP(b)==0 AND FP(c)==0 THEN
+      g:=CVMcd(CVMcd(a,b),c);
+      IF g>0.5 THEN
+        a:=a/g; b:=b/g; c:=c/g;
+      END;
+    END;
+    txt:=CVLin({a,b},{"x1","x2"})+" <= "+CVF(c);
+    res(SIZE(res)+1):="P("+CVF(x1)+","+CVF(y1)+") Q("+CVF(x2)+","+CVF(y2)+"): "+txt;
+    MSGBOX(txt);
+  END;
+  PRINT();
+  PRINT("== SEMIESPACIOS ==");
+  PRINT("n=(Qy-Py, Px-Qx), b=n*P; signo");
+  PRINT("para que I cumpla n*x<=b.");
+  FOR g FROM 1 TO SIZE(res) DO
+    PRINT(res(g));
+  END;
+  RETURN 1;
+END;
+
+CVProyLin()
+BEGIN
+  LOCAL nu,r,lab,k,vx,vy,x0,y0;
+  LOCAL bx,by,bd,bt,q,t,x,y;
+  LOCAL dd,n1,n2,bb,nn;
+  nu:=CVNucleo2D();
+  r:=nu(1); lab:=nu(2); k:=nu(3);
+  vx:=nu(4); vy:=nu(5);
+  PRINT();
+  PRINT("== PROYECCION SOBRE POLIEDRO ==");
+  IF SIZE(CVX)<>2 THEN
+    PRINT("CVX debe tener 2 componentes.");
+    RETURN 0;
+  END;
+  x0:=CVX(1); y0:=CVX(2);
+  PRINT("x0="+CVFV(CVX)+", C = region de CVDatos");
+  IF CVViola(r,k,x0,y0)==0 THEN
+    PRINT("x0 esta en C: proy(x0)=x0.");
+    PRINT("No hay hiperplano separador.");
+    RETURN 1;
+  END;
+  bd:=1E99; bx:=0; by:=0; bt:="";
+  PRINT("Candidatos (factibles):");
+  FOR q FROM 1 TO k DO
+    nn:=r(q,1)^2+r(q,2)^2;
+    IF nn>1E-12 THEN
+      t:=(r(q,1)*x0+r(q,2)*y0-r(q,3))/nn;
+      x:=x0-t*r(q,1); y:=y0-t*r(q,2);
+      IF CVViola(r,k,x,y)==0 THEN
+        dd:=((x-x0)^2+(y-y0)^2)^0.5;
+        PRINT(" pie en "+lab(q)+": ("+CVF(x)+", "+CVF(y)+") d="+CVF(dd));
+        IF dd<bd-1E-12 THEN
+          bd:=dd; bx:=x; by:=y; bt:="pie perpendicular en "+lab(q);
+        END;
+      END;
+    END;
+  END;
+  FOR q FROM 1 TO SIZE(vx) DO
+    dd:=((vx(q)-x0)^2+(vy(q)-y0)^2)^0.5;
+    PRINT(" vertice ("+CVF(vx(q))+", "+CVF(vy(q))+") d="+CVF(dd));
+    IF dd<bd-1E-12 THEN
+      bd:=dd; bx:=vx(q); by:=vy(q); bt:="vertice";
+    END;
+  END;
+  IF bd>1E98 THEN
+    PRINT("Region vacia.");
+    RETURN 0;
+  END;
+  PRINT("proy(x0)=c*=("+CVF(bx)+", "+CVF(by)+")");
+  PRINT("("+bt+"), dist="+CVF(bd));
+  n1:=x0-bx; n2:=y0-by;
+  bb:=n1*bx+n2*by;
+  PRINT("Separador: n=x0-c*=("+CVF(n1)+", "+CVF(n2)+")");
+  PRINT("b=n*c*="+CVF(bb));
+  PRINT("H: "+CVLin({n1,n2},{"x1","x2"})+" = "+CVF(bb));
+  PRINT("C en n*x<=b; n*x0="+CVF(n1*x0+n2*y0)+" > b");
+  RETURN 1;
+END;
+
+CVSoporteLin()
+BEGIN
+  LOCAL nu,r,lab,k,x0,y0,q,cnt;
+  nu:=CVNucleo2D();
+  r:=nu(1); lab:=nu(2); k:=nu(3);
+  PRINT();
+  PRINT("== HIPERPLANO SOPORTE (POLIEDRO) ==");
+  IF SIZE(CVX)<>2 THEN
+    PRINT("CVX debe tener 2 componentes.");
+    RETURN 0;
+  END;
+  x0:=CVX(1); y0:=CVX(2);
+  PRINT("x0="+CVFV(CVX));
+  IF CVViola(r,k,x0,y0)<>0 THEN
+    PRINT("x0 no esta en C.");
+    RETURN 0;
+  END;
+  cnt:=0;
+  FOR q FROM 1 TO k DO
+    IF ABS(r(q,1)*x0+r(q,2)*y0-r(q,3))<=1E-7*MAX(1,ABS(r(q,3))) THEN
+      cnt:=cnt+1;
+      PRINT(lab(q)+" activa: H: "+CVLin({r(q,1),r(q,2)},{"x1","x2"})+" = "+CVF(r(q,3)));
+      PRINT("  C en "+CVLin({r(q,1),r(q,2)},{"x1","x2"})+" <= "+CVF(r(q,3)));
+    END;
+  END;
+  IF cnt==0 THEN
+    PRINT("x0 es interior: no hay soporte.");
+  END;
+  IF cnt>1 THEN
+    PRINT("Vertice: vale tambien cualquier");
+    PRINT("combinacion con pesos >=0.");
+  END;
+  RETURN 1;
+END;
+
+// ---------- Edicion de datos ----------
+
+CVEditarPL()
+BEGIN
+  LOCAL op,rows,cols,i;
+  op:=1;
+  CHOOSE(op,"DATOS PL","Editar modelo actual","Crear modelo nuevo");
+  IF op==0 THEN
+    RETURN 0;
+  END;
+  IF op==2 THEN
+    rows:=2; cols:=2;
+    IF INPUT({rows,cols},"Dimensiones",{"Restricciones","Variables"})==0 THEN
+      RETURN 0;
+    END;
+    CVDatos:=MAKEMAT(0,rows,cols+2);
+    FOR i FROM 1 TO rows DO
+      CVDatos(i,cols+2):=-1;
+    END;
+    CVCoste:=MAKELIST(0,I,1,cols);
+    CVTipo:=MAKELIST(1,I,1,cols);
+  END;
+  MSGBOX("Filas: a1..an | b | rel. rel: -1 <=, 0 =, 1 >=.");
+  EDITMAT(CVDatos);
+  MSGBOX("Coeficientes del objetivo c.");
+  EDITLIST(CVCoste);
+  MSGBOX("Signo de cada variable: 1 >=0, 0 libre, -1 <=0.");
+  EDITLIST(CVTipo);
+  INPUT(CVSentido,"Objetivo","1 MAX, -1 MIN");
+  RETURN 1;
+END;
+
+CVEditarPuntos()
+BEGIN
+  LOCAL op;
+  op:=1;
+  CHOOSE(op,"Editar","Puntos A (filas) CVPuntos","Pesos lambda CVLambda","Punto x CVX","Direcciones CVDirs");
+  IF op==1 THEN
+    MSGBOX("Un punto por fila.");
+    EDITMAT(CVPuntos);
+  END;
+  IF op==2 THEN
+    EDITLIST(CVLambda);
+  END;
+  IF op==3 THEN
+    EDITLIST(CVX);
+  END;
+  IF op==4 THEN
+    MSGBOX("Una direccion por fila; filas de ceros se ignoran.");
+    EDITMAT(CVDirs);
+  END;
+  RETURN op;
+END;
+
+EXPORT OPTCONV()
+BEGIN
+  LOCAL op,err;
+  op:=1;
+  CHOOSE(op,"OPTCONV Temas 1-2",
+    "Editar datos PL (CVDatos)",
+    "PL 2D: vertices y optimo",
+    "PL 2D: sensibilidad",
+    "PL 2D: dibujar region",
+    "Forma estandar Ax=b,x>=0",
+    "Sol. basicas, ptos y dirs",
+    "x=sum l*x_i+sum m*d_j",
+    "Caratheodory (reducir)",
+    "x en conv(A)?",
+    "Ptos extremos de conv(A)",
+    "Semiespacio por 2 puntos",
+    "Proyeccion y separador",
+    "Hiperplano soporte",
+    "Editar A, lambda, x, dirs");
+  IF op==0 THEN
+    RETURN 0;
+  END;
+  IF op==1 THEN
+    CVEditarPL();
+  END;
+  IF op==2 OR op==3 OR op==4 OR op==12 OR op==13 THEN
+    err:=CVValida2D();
+    IF err<>"" THEN
+      MSGBOX(err);
+      RETURN 0;
+    END;
+  END;
+  IF op==5 OR op==6 THEN
+    err:=CVValidaStd();
+    IF err<>"" THEN
+      MSGBOX(err);
+      RETURN 0;
+    END;
+  END;
+  IF op==2 THEN
+    CVVer2D();
+  END;
+  IF op==3 THEN
+    CVSens2D();
+  END;
+  IF op==4 THEN
+    CVDibujar();
+  END;
+  IF op==5 THEN
+    CVVerStd();
+  END;
+  IF op==6 THEN
+    CVBases();
+  END;
+  IF op==7 THEN
+    CVRepresentar();
+  END;
+  IF op==8 THEN
+    CVCarath();
+  END;
+  IF op==9 THEN
+    CVPertenece();
+  END;
+  IF op==10 THEN
+    CVExtConv();
+  END;
+  IF op==11 THEN
+    CVSemiesp();
+  END;
+  IF op==12 THEN
+    CVProyLin();
+  END;
+  IF op==13 THEN
+    CVSoporteLin();
+  END;
+  IF op==14 THEN
+    CVEditarPuntos();
+  END;
+  RETURN op;
+END;
+
+// ---------- CAS (vista CAS) ----------
+// v = lista de variables, p.ej. [x,y]. g = lista de restricciones g_k<=0.
+
+#cas
+CVHESS(f,v):=
+BEGIN
+  LOCAL h,n,k,a,b,sb,lid,pri;
+  LOCAL t,ix,m,ev,con,np,nn,ps;
+  LOCAL ng;
+  n:=size(v);
+  h:=simplify(hessian(f,v));
+  lid:=[];
+  FOR k FROM 1 TO n DO
+    sb:=makemat(0,k,k);
+    FOR a FROM 1 TO k DO
+      FOR b FROM 1 TO k DO
+        sb[a,b]:=h[a,b];
+      END;
+    END;
+    lid:=append(lid,simplify(det(sb)));
+  END;
+  pri:=[];
+  FOR k FROM 1 TO 2^n-1 DO
+    ix:=[];
+    t:=k;
+    FOR a FROM 1 TO n DO
+      IF irem(t,2)==1 THEN
+        ix:=append(ix,a);
+      END;
+      t:=iquo(t,2);
+    END;
+    m:=size(ix);
+    sb:=makemat(0,m,m);
+    FOR a FROM 1 TO m DO
+      FOR b FROM 1 TO m DO
+        sb[a,b]:=h[ix[a],ix[b]];
+      END;
+    END;
+    pri:=append(pri,[ix,simplify(det(sb))]);
+  END;
+  ev:="H depende de las variables";
+  con:="Estudiar signos en el dominio";
+  IF size(lname(h))==0 THEN
+    ev:=eigenvals(h);
+    np:=1; nn:=1; ps:=1; ng:=1;
+    FOR k FROM 1 TO n DO
+      IF evalf(lid[k])<=0 THEN
+        np:=0;
+      END;
+      IF evalf((-1)^k*lid[k])<=0 THEN
+        nn:=0;
+      END;
+    END;
+    FOR k FROM 1 TO size(pri) DO
+      m:=size(pri[k][1]);
+      IF evalf(pri[k][2])<-1e-12 THEN
+        ps:=0;
+      END;
+      IF evalf((-1)^m*pri[k][2])<-1e-12 THEN
+        ng:=0;
+      END;
+    END;
+    con:="INDEFINIDA: ni convexa ni concava";
+    IF ng==1 THEN
+      con:="SEMIDEF. NEGATIVA: concava";
+    END;
+    IF ps==1 THEN
+      con:="SEMIDEF. POSITIVA: convexa";
+    END;
+    IF nn==1 THEN
+      con:="DEF. NEGATIVA: estrictamente concava";
+    END;
+    IF np==1 THEN
+      con:="DEF. POSITIVA: estrictamente convexa";
+    END;
+  END;
+  print("==== CVHESS ====");
+  print("H = "+string(h));
+  FOR k FROM 1 TO n DO
+    print("D"+string(k)+" (lider) = "+string(lid[k]));
+  END;
+  print("Menores principales [filas]: valor");
+  FOR k FROM 1 TO size(pri) DO
+    print("  "+string(pri[k][1])+": "+string(pri[k][2]));
+  END;
+  IF size(lname(h))==0 THEN
+    print("Autovalores: "+string(ev));
+  ELSE
+    print("H depende de las variables:");
+  END;
+  print(con);
+  RETURN con;
+END;
+#end
+
+#cas
+CVFACT(g,v,pt):=
+BEGIN
+  LOCAL j,w;
+  FOR j FROM 1 TO size(pt) DO
+    w:=evalf(pt[j]);
+    IF type(w)<>DOM_FLOAT AND type(w)<>DOM_INT THEN
+      RETURN 0;
+    END;
+  END;
+  FOR j FROM 1 TO size(g) DO
+    w:=evalf(subst(g[j],v,pt));
+    IF type(w)<>DOM_FLOAT AND type(w)<>DOM_INT THEN
+      RETURN 0;
+    END;
+    IF w>1e-7 THEN
+      RETURN 0;
+    END;
+  END;
+  RETURN 1;
+END;
+#end
+
+#cas
+CVOPT2(f,g,v):=
+BEGIN
+  LOCAL c,sl,k,j,m,pt,eqs,imn;
+  LOCAL imx,w;
+  c:=[];
+  sl:=solve([diff(f,v[1]),diff(f,v[2])],v);
+  FOR k FROM 1 TO size(sl) DO
+    pt:=simplify([sl[k][1],sl[k][2]]);
+    IF CVFACT(g,v,pt)==1 THEN
+      c:=append(c,[pt,evalf(pt),evalf(subst(f,v,pt)),"interior"]);
+    END;
+  END;
+  FOR j FROM 1 TO size(g) DO
+    eqs:=[diff(f,v[1])+lmb*diff(g[j],v[1]),diff(f,v[2])+lmb*diff(g[j],v[2]),g[j]];
+    sl:=solve(eqs,[v[1],v[2],lmb]);
+    FOR k FROM 1 TO size(sl) DO
+      pt:=simplify([sl[k][1],sl[k][2]]);
+      IF CVFACT(g,v,pt)==1 THEN
+        c:=append(c,[pt,evalf(pt),evalf(subst(f,v,pt)),["g",j,"activa, lambda=",sl[k][3]]]);
+      END;
+    END;
+  END;
+  FOR j FROM 1 TO size(g)-1 DO
+    FOR m FROM j+1 TO size(g) DO
+      sl:=solve([g[j],g[m]],v);
+      FOR k FROM 1 TO size(sl) DO
+        pt:=simplify([sl[k][1],sl[k][2]]);
+        IF CVFACT(g,v,pt)==1 THEN
+          c:=append(c,[pt,evalf(pt),evalf(subst(f,v,pt)),["g",j,"y g",m,"activas"]]);
+        END;
+      END;
+    END;
+  END;
+  print("==== CVOPT2: candidatos factibles ====");
+  IF size(c)==0 THEN
+    print("Sin candidatos");
+    RETURN "Sin candidatos (revisar g o usar grafica)";
+  END;
+  FOR k FROM 1 TO size(c) DO
+    print(string(c[k][4])+": "+string(c[k][1]));
+    print("   ~ "+string(c[k][2])+"  f="+string(c[k][3]));
+  END;
+  imn:=1; imx:=1;
+  FOR k FROM 2 TO size(c) DO
+    w:=c[k][3];
+    IF w<c[imn][3] THEN
+      imn:=k;
+    END;
+    IF w>c[imx][3] THEN
+      imx:=k;
+    END;
+  END;
+  print("MIN f="+string(c[imn][3])+" en "+string(c[imn][1]));
+  print("MAX f="+string(c[imx][3])+" en "+string(c[imx][1])+" (si C acotado)");
+  RETURN ["MIN:",c[imn],"MAX (si acotado):",c[imx],"Candidatos [pto,aprox,f,tipo]:",c];
+END;
+#end
+
+#cas
+CVPROY(p,g,v):=
+BEGIN
+  LOCAL f,r,cst,nn,bb,dd;
+  f:=(v[1]-p[1])^2+(v[2]-p[2])^2;
+  r:=CVOPT2(f,g,v);
+  IF type(r)==DOM_STRING THEN
+    RETURN r;
+  END;
+  cst:=r[2][1];
+  dd:=simplify(sqrt(subst(f,v,cst)));
+  print("==== CVPROY ====");
+  IF evalf(dd)<1e-9 THEN
+    print("x0 esta en C: proy(x0)=x0");
+    RETURN ["x0 esta en C: proy=x0",cst];
+  END;
+  nn:=simplify([p[1]-cst[1],p[2]-cst[2]]);
+  bb:=simplify(nn[1]*cst[1]+nn[2]*cst[2]);
+  print("proy(x0) = c* = "+string(cst)+" ~ "+string(evalf(cst)));
+  print("dist = "+string(dd)+" ~ "+string(evalf(dd)));
+  print("n = x0 - c* = "+string(nn));
+  print("b = n*c* = "+string(bb));
+  print("H: "+string(nn[1])+"*x + "+string(nn[2])+"*y = "+string(bb));
+  print("C en n*x<=b ; n*x0 = "+string(simplify(nn[1]*p[1]+nn[2]*p[2]))+" > b");
+  RETURN ["proy=",cst,evalf(cst),"dist=",dd,"n=x0-proy=",nn,"b=n*proy=",bb,"H: n1*x+n2*y=b; C en <=b, x0 en >b"];
+END;
+#end
+
+#cas
+CVSOP(c,g,v):=
+BEGIN
+  LOCAL j,w,gr,out;
+  out:=[];
+  print("==== CVSOP: C en n*x<=b ====");
+  FOR j FROM 1 TO size(g) DO
+    w:=evalf(subst(g[j],v,c));
+    IF abs(w)<1e-7 THEN
+      gr:=simplify(subst([diff(g[j],v[1]),diff(g[j],v[2])],v,c));
+      out:=append(out,["g",j,"activa: n=grad g=",gr,"b=n*c=",simplify(gr[1]*c[1]+gr[2]*c[2])]);
+      print("g"+string(j)+" activa: n = grad g"+string(j)+"(c) = "+string(gr));
+      print("   H: "+string(gr[1])+"*x + "+string(gr[2])+"*y = "+string(simplify(gr[1]*c[1]+gr[2]*c[2])));
+    END;
+  END;
+  IF size(out)==0 THEN
+    RETURN "Ninguna g activa en c (c interior o fuera)";
+  END;
+  RETURN ["H: n*x=b, C en n*x<=b (g convexa):",out];
+END;
+#end
